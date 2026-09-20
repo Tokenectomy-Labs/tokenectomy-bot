@@ -2,6 +2,7 @@ use anyhow::{Result, bail};
 use std::path::Path;
 use tree_sitter::{Language, Node, Parser, Point, Tree};
 
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub enum SupportedLanguage {
     TypeScript,
     Tsx,
@@ -13,6 +14,19 @@ pub enum SupportedLanguage {
 }
 
 impl SupportedLanguage {
+    pub fn from_name(name: &str) -> Option<Self> {
+        match name.to_lowercase().trim() {
+            "ts" | "typescript" => Some(SupportedLanguage::TypeScript),
+            "tsx" => Some(SupportedLanguage::Tsx),
+            "js" | "javascript" => Some(SupportedLanguage::JavaScript),
+            "jsx" => Some(SupportedLanguage::Jsx),
+            "rs" | "rust" => Some(SupportedLanguage::Rust),
+            "py" | "python" => Some(SupportedLanguage::Python),
+            "go" | "golang" => Some(SupportedLanguage::Go),
+            _ => None,
+        }
+    }
+
     pub fn from_path(path: &Path) -> Option<Self> {
         let ext = path.extension().and_then(|s| s.to_str()).unwrap_or("");
         match ext {
@@ -24,6 +38,18 @@ impl SupportedLanguage {
             "py" | "pyi" => Some(SupportedLanguage::Python),
             "go" => Some(SupportedLanguage::Go),
             _ => None,
+        }
+    }
+
+    pub fn extension(&self) -> &'static str {
+        match self {
+            SupportedLanguage::TypeScript => "ts",
+            SupportedLanguage::Tsx => "tsx",
+            SupportedLanguage::JavaScript => "js",
+            SupportedLanguage::Jsx => "jsx",
+            SupportedLanguage::Rust => "rs",
+            SupportedLanguage::Python => "py",
+            SupportedLanguage::Go => "go",
         }
     }
 
@@ -205,5 +231,23 @@ mod tests {
         let ifs = parsed.find_all_descendants(parsed.root_node(), &|n| n.kind() == "if_statement");
         assert!(!calls.is_empty());
         assert!(!ifs.is_empty());
+    }
+
+    #[test]
+    fn test_tree_sitter_query_execution() {
+        use tree_sitter::{Query, QueryCursor, StreamingIterator};
+        let code = "const secret = '12345';\nconst normal = 42;\n".to_string();
+        let parsed = ParsedSource::parse(Path::new("test.js"), code).unwrap();
+        let ts_lang = parsed.language.tree_sitter_language();
+        let query_str = "(variable_declarator name: (identifier) @name value: (string) @val)";
+        let query = Query::new(&ts_lang, query_str).expect("query compile");
+        let mut cursor = QueryCursor::new();
+        let mut matches = cursor.matches(&query, parsed.root_node(), parsed.source.as_bytes());
+        let mut count = 0;
+        while let Some(m) = matches.next() {
+            count += 1;
+            assert!(!m.captures().is_empty());
+        }
+        assert_eq!(count, 1);
     }
 }

@@ -176,19 +176,17 @@ Mendeteksi trik agent yang membuat CI hijau tanpa memperbaiki perilaku. Ini mela
 
 Menjadikan bot ini produk, bukan sekadar action.
 
-- [ ] **GitHub App (berbasis webhook)**
+- [x] **GitHub App (berbasis webhook)**
   - Terpasang di tingkat organisasi tanpa workflow per repo; komentar dan check run dikirim langsung.
-- [ ] **Rule Kustom**
+- [x] **Rule Kustom**
   - Organisasi menulis rule sendiri sebagai query Tree-sitter (`.scm`) di `.tokenectomy/rules/`, dengan fixture wajib dan validator.
-- [ ] **Kebijakan Tingkat Organisasi**
+- [x] **Kebijakan Tingkat Organisasi**
   - Preset yang dipaksakan lintas repo; pengecualian butuh persetujuan.
-- [ ] **Ledger Audit**
+- [x] **Ledger Audit**
   - Catatan tersegel SHA-256 atas temuan, penekanan, dan persetujuan per PR (gaya ledger Sovereign) untuk kebutuhan kepatuhan.
-- [ ] **Dasbor & Metrik**
-  - Percobaan tampering yang diblokir, tingkat lolos PR agent, rule terbanyak memicu, waktu review; notifikasi Slack/Teams.
-- [ ] **Lapisan LLM Opsional (Sentinel Pro)**
-  - Penjelasan temuan dan usulan perbaikan dengan konteks yang dikompresi Tokenectomy; auto-fix hanya berupa PR terpisah yang butuh persetujuan manusia.
-  - Keputusan lulus/gagal tetap sepenuhnya deterministik.
+- [x] **Dasbor & Metrik**
+  - Percobaan tampering yang diblokir, tingkat lolos PR agent, rule terbanyak memicu, waktu review; notifikasi Webhook Slack/Discord/Teams.
+- *Dikecualikan (Sengaja Ditolak)*: **Lapisan LLM (Sentinel Pro)** — Seluruh keputusan dan arsitektur tetap **100% Zero-LLM & deterministik AST murni** tanpa biaya token atau resiko halusinasi.
 
 ---
 

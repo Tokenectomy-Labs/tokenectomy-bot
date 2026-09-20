@@ -20,6 +20,7 @@ tb-diff.workspace = true
 tb-parse.workspace = true
 tb-rules.workspace = true
 tb-report.workspace = true
+sha2.workspace = true
 
 [dev-dependencies]
 tempfile.workspace = true

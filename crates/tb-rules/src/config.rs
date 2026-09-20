@@ -2,7 +2,7 @@ use std::collections::HashMap;
 use std::fs;
 use std::path::Path;
 
-use anyhow::{Context, Result};
+use anyhow::{Context, Result, bail};
 use globset::{Glob, GlobSetBuilder};
 use serde::{Deserialize, Deserializer, Serialize};
 
@@ -98,6 +98,12 @@ pub struct Config {
 
     #[serde(default)]
     pub overrides: Vec<OverrideConfig>,
+
+    #[serde(default)]
+    pub custom_rules_dir: Option<String>,
+
+    #[serde(default)]
+    pub org_policy: Option<String>,
 }
 
 impl Default for Config {
@@ -119,6 +125,8 @@ impl Default for Config {
             logger_names: None,
             orm_modules: None,
             overrides: Vec::new(),
+            custom_rules_dir: Some(".tokenectomy/rules".to_string()),
+            org_policy: None,
         }
     }
 }
@@ -251,6 +259,49 @@ impl Config {
         }
         modules
     }
+
+    /// Apply an organization-wide policy on top of this repository configuration.
+    /// If `allow_downgrade` is false, the local repo configuration cannot disable rules
+    /// or reduce rule severity below what the organization policy mandates.
+    pub fn apply_org_policy(&mut self, org: &Config, allow_downgrade: bool) -> Result<()> {
+        if let Some(org_preset) = org.extends {
+            self.extends = Some(org_preset);
+        }
+
+        for (rule_id, org_setting) in &org.rules {
+            if !allow_downgrade && let Some(local_setting) = self.rules.get(rule_id) {
+                if org_setting.enabled && !local_setting.enabled {
+                    bail!(
+                        "Organization policy forbids disabling rule '{}' without an approved exception",
+                        rule_id
+                    );
+                }
+                if org_setting.severity == Some(Severity::Error)
+                    && local_setting.severity != Some(Severity::Error)
+                {
+                    bail!(
+                        "Organization policy enforces Error severity for rule '{}'; downgrade rejected without approval",
+                        rule_id
+                    );
+                }
+            }
+            self.rules
+                .entry(rule_id.clone())
+                .or_insert_with(|| org_setting.clone());
+        }
+
+        for pat in &org.ignore {
+            if !self.ignore.contains(pat) {
+                self.ignore.push(pat.clone());
+            }
+        }
+
+        if self.custom_rules_dir.is_none() && org.custom_rules_dir.is_some() {
+            self.custom_rules_dir = org.custom_rules_dir.clone();
+        }
+
+        Ok(())
+    }
 }
 
 #[cfg(test)]
@@ -320,5 +371,39 @@ mod tests {
             Severity::Warn,
         );
         assert!(!enabled_legacy);
+    }
+
+    #[test]
+    fn test_org_policy_enforcement() {
+        let org_json = r#"{
+            "extends": "strict",
+            "rules": {
+                "TB001": "error",
+                "TB002": "error"
+            }
+        }"#;
+        let org_config = Config::from_json_str(org_json).unwrap();
+
+        let mut repo_config = Config::default();
+        repo_config.rules.insert(
+            "TB001".to_string(),
+            RuleSetting {
+                enabled: false,
+                severity: None,
+            },
+        );
+
+        // Disabling TB001 should fail without allow_downgrade
+        let err = repo_config.apply_org_policy(&org_config, false);
+        assert!(err.is_err());
+        assert!(
+            err.unwrap_err()
+                .to_string()
+                .contains("forbids disabling rule 'TB001'")
+        );
+
+        // With allow_downgrade = true, it should succeed
+        let ok = repo_config.apply_org_policy(&org_config, true);
+        assert!(ok.is_ok());
     }
 }

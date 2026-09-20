@@ -75,6 +75,17 @@ impl RuleEngine {
         &self.rules
     }
 
+    pub fn add_rule(&mut self, rule: Box<dyn Rule>) {
+        self.rules.push(rule);
+    }
+
+    pub fn with_custom_rules(mut self, rules: Vec<crate::custom::CustomRule>) -> Self {
+        for rule in rules {
+            self.rules.push(Box::new(rule));
+        }
+        self
+    }
+
     pub fn run(
         &self,
         diff: &DiffResult,

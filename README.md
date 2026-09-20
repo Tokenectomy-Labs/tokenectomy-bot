@@ -53,6 +53,59 @@ Run as a background MCP stdio server to enable autonomous pre-PR audits in Claud
 tokenectomy-bot mcp
 ```
 
+### Custom Tree-sitter SCM Rules
+Write domain-specific rules as Tree-sitter `.scm` queries in `.tokenectomy/rules/`:
+```scheme
+;; @id: TB_CUSTOM_001
+;; @name: no-hardcoded-secret
+;; @severity: error
+;; @message: Potential hardcoded secret or token assignment detected in source code
+;; @fix_hint: Move credentials to secure environment variables
+;; @languages: typescript, javascript
+
+(variable_declarator
+  name: (identifier) @id (#match? @id "(?i)(api_?key|secret|token|password)")
+  value: (string) @val) @match
+```
+
+Validate and test queries against test fixtures:
+```bash
+tokenectomy-bot rules validate .tokenectomy/rules/no_hardcoded_secrets.scm --fixture src/tests/fixture.ts
+```
+
+### Cryptographic SHA-256 Sealed Audit Ledger
+Maintain immutable compliance proof for every PR audit:
+```bash
+# Record sealed entry upon review
+tokenectomy-bot review --base origin/main --ledger .tokenectomy/audit-ledger.jsonl
+
+# Verify cryptographic hash chain integrity (detects historical tampering)
+tokenectomy-bot ledger verify .tokenectomy/audit-ledger.jsonl
+
+# View executive metrics and compliance dashboard
+tokenectomy-bot ledger metrics .tokenectomy/audit-ledger.jsonl
+```
+
+### Organization-Wide Policy Enforcement
+Enforce uncompromisable rule baselines across repositories:
+```bash
+tokenectomy-bot review --org-policy /etc/tokenectomy/org-policy.json
+```
+Repos cannot downgrade or disable mandated rules without explicit approved exception (`--allow-policy-downgrade`).
+
+### GitHub App Webhook Server
+Run as an autonomous organization-level GitHub webhook listener without per-repo workflows:
+```bash
+tokenectomy-bot serve --port 8080 --secret "$GITHUB_WEBHOOK_SECRET" --ledger /var/log/audit.jsonl
+```
+
+### Multi-Channel Webhook Notifications
+Notify engineering and security teams upon PR evaluation:
+```bash
+tokenectomy-bot review --base origin/main --webhook-url "https://hooks.slack.com/services/xxx"
+```
+Supports Slack, Discord, and Microsoft Teams.
+
 ### Mekanisme Penekanan (Suppression)
 Gunakan komentar inline jika blok sengaja dilewati secara sah:
 ```typescript

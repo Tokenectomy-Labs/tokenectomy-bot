@@ -100,6 +100,15 @@
         },
         "required": ["files", "rules"]
       }
+    },
+    "custom_rules_dir": {
+      "type": "string",
+      "default": ".tokenectomy/rules",
+      "description": "Path to directory containing custom Tree-sitter SCM (.scm) verification rules"
+    },
+    "org_policy": {
+      "type": "string",
+      "description": "Path, JSON string, or preset name for organization-wide policy enforcement"
     }
   },
   "additionalProperties": false

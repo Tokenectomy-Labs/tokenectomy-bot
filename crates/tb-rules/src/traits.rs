@@ -1,8 +1,8 @@
 use crate::model::{Finding, RuleContext, Severity};
 
 pub trait Rule: Send + Sync {
-    fn id(&self) -> &'static str;
-    fn name(&self) -> &'static str;
+    fn id(&self) -> &str;
+    fn name(&self) -> &str;
     fn default_severity(&self) -> Severity;
     fn needs_old_side(&self) -> bool {
         false
