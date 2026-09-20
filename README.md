@@ -47,6 +47,12 @@ tokenectomy-bot review --diff-file my_change.diff --format text
 tokenectomy-bot review --base origin/main --format github --fail-on error
 ```
 
+### Model Context Protocol (MCP) Server for AI Agents
+Run as a background MCP stdio server to enable autonomous pre-PR audits in Claude Desktop, Cursor, Antigravity, and Cline:
+```bash
+tokenectomy-bot mcp
+```
+
 ### Mekanisme Penekanan (Suppression)
 Gunakan komentar inline jika blok sengaja dilewati secara sah:
 ```typescript
@@ -58,14 +64,15 @@ try {
 
 ---
 
-## Benchmark & Audit Presisi
+## Performance & Precision Benchmarks
 
-Diuji secara ketat dengan test suite 1.000 kasus uji (`stress_1k_benchmark`):
-* ⚡ **Kecepatan**: Memproses 1.000 berkas diff dalam **0.55 detik** (~**1.818 berkas/detik**).
-* 🎯 **Presisi**: **100.00%** precision gate (0 false positive, 0 false negative).
-* 🛡️ **Stabilitas**: 100% lulus tanpa panic / crash bahkan pada payload adversarial ekstrem.
+Rigorously audited with a standalone 1,000-case stress test suite (`stress_1k_benchmark`):
+* ⚡ **Speed**: Processes 1,000 PR diff files in **~0.70 seconds** (~**1,428+ files/sec**).
+* 🎯 **Precision**: **100.00%** precision gate (0 false positives, 0 false negatives).
+* 🛡️ **Stability**: Zero panics or crashes across adversarial payloads, unicode emojis, binary markers, and extreme line numbers.
+* 🌐 **Languages**: Native Tree-sitter parsing for TypeScript, JavaScript, Rust, Go, and Python.
 
-Laporan audit lengkap tersedia di [BENCHMARK.md](BENCHMARK.md).
+For complete reproduction instructions and audit tables, see [BENCHMARK.md](BENCHMARK.md).
 
 ---
 
