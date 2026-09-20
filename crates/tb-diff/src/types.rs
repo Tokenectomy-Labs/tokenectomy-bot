@@ -115,6 +115,8 @@ impl FileDiff {
         !self.is_binary && self.kind != FileKind::Ignored
     }
 
+    pub const MAX_SYNTHETIC_LINES: usize = 100_000;
+
     /// Reconstructs lines for new side from hunks when the full file is unavailable on disk
     pub fn reconstruct_synthetic_new_source(&self) -> Option<String> {
         if self.hunks.is_empty() {
@@ -126,6 +128,11 @@ impl FileDiff {
             .flat_map(|h| h.lines.iter())
             .filter_map(|l| l.new_lineno)
             .max()?;
+
+        if max_line > Self::MAX_SYNTHETIC_LINES {
+            // Guard against DoS / memory exhaustion attacks from extreme line numbers
+            return None;
+        }
 
         let mut lines = vec![String::new(); max_line];
         for hunk in &self.hunks {
@@ -149,6 +156,11 @@ impl FileDiff {
             .flat_map(|h| h.lines.iter())
             .filter_map(|l| l.old_lineno)
             .max()?;
+
+        if max_line > Self::MAX_SYNTHETIC_LINES {
+            // Guard against DoS / memory exhaustion attacks from extreme line numbers
+            return None;
+        }
 
         let mut lines = vec![String::new(); max_line];
         for hunk in &self.hunks {
