@@ -1,0 +1,11 @@
+diff --git a/src/api.ts b/src/api.ts
+index 3333333..4444444 100644
+--- a/src/api.ts
++++ b/src/api.ts
+@@ -12,4 +12,7 @@ export async function fetchData() {
+   try {
+     return await client.get("/data");
++  } catch (err) {
++    // silent
++  }
+ }

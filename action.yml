@@ -1,0 +1,33 @@
+name: 'Tokenectomy Bot PR Gate'
+description: 'Deterministic AST-based PR reviewer catching structural bugs, security holes, and AI agent test tampering.'
+author: 'Tokenectomy Labs'
+
+inputs:
+  base:
+    description: 'Base git reference'
+    required: false
+    default: 'origin/main'
+  head:
+    description: 'Head git reference'
+    required: false
+    default: 'HEAD'
+  fail_on:
+    description: 'Failure threshold (error, warn, none)'
+    required: false
+    default: 'error'
+  format:
+    description: 'Report output format (text, json, sarif, github)'
+    required: false
+    default: 'github'
+
+runs:
+  using: 'composite'
+  steps:
+    - name: Run Tokenectomy Bot
+      shell: bash
+      run: |
+        cargo run --quiet -p tb-cli -- review \
+          --base "${{ inputs.base }}" \
+          --head "${{ inputs.head }}" \
+          --fail-on "${{ inputs.fail_on }}" \
+          --format "${{ inputs.format }}"
