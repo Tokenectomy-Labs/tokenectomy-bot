@@ -16,9 +16,13 @@ inputs:
     required: false
     default: 'error'
   format:
-    description: 'Report output format (text, json, sarif, github)'
+    description: 'Report output format (text, json, sarif, github, summary, review-batch)'
     required: false
     default: 'github'
+  agent_pr:
+    description: 'Enforce Agent PR mode (escalate anti-tampering rules to error)'
+    required: false
+    default: 'false'
 
 runs:
   using: 'composite'
@@ -26,8 +30,14 @@ runs:
     - name: Run Tokenectomy Bot
       shell: bash
       run: |
+        AGENT_FLAG=""
+        if [ "${{ inputs.agent_pr }}" = "true" ]; then
+          AGENT_FLAG="--agent-pr"
+        fi
+
         cargo run --quiet -p tb-cli -- review \
           --base "${{ inputs.base }}" \
           --head "${{ inputs.head }}" \
           --fail-on "${{ inputs.fail_on }}" \
-          --format "${{ inputs.format }}"
+          --format "${{ inputs.format }}" \
+          $AGENT_FLAG

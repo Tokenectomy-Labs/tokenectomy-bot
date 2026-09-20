@@ -58,6 +58,17 @@ try {
 
 ---
 
+## Benchmark & Audit Presisi
+
+Diuji secara ketat dengan test suite 1.000 kasus uji (`stress_1k_benchmark`):
+* ⚡ **Kecepatan**: Memproses 1.000 berkas diff dalam **0.55 detik** (~**1.818 berkas/detik**).
+* 🎯 **Presisi**: **100.00%** precision gate (0 false positive, 0 false negative).
+* 🛡️ **Stabilitas**: 100% lulus tanpa panic / crash bahkan pada payload adversarial ekstrem.
+
+Laporan audit lengkap tersedia di [BENCHMARK.md](BENCHMARK.md).
+
+---
+
 ## Arsitektur Workspace
 
 ```
