@@ -44,13 +44,19 @@ impl Rule for Tb003TautologicalAssertion {
                 continue;
             }
 
-            let text = new_parsed.node_text(&node);
+            let text = new_parsed.node_text(&node).trim();
 
-            let is_tautology = text.contains("expect(true).toBe(true)")
-                || text.contains("expect(false).toBe(false)")
-                || text.contains("assert(true)")
-                || text.contains("assert(1 === 1)")
-                || text.contains("assert.strictEqual(true, true)");
+            if !text.starts_with("expect(") && !text.starts_with("assert(") && !text.starts_with("assert.") {
+                continue;
+            }
+
+            let is_tautology = text.starts_with("expect(true).toBe(true)")
+                || text.starts_with("expect(false).toBe(false)")
+                || text.starts_with("expect(true).toEqual(true)")
+                || text.starts_with("expect(false).toEqual(false)")
+                || text == "assert(true)"
+                || text.starts_with("assert(1 === 1)")
+                || text.starts_with("assert.strictEqual(true, true)");
 
             // Also check expect(X).toBe(X)
             let is_self_comparison = if !is_tautology && text.starts_with("expect(") {

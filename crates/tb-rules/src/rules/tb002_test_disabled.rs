@@ -36,7 +36,7 @@ impl Rule for Tb002TestDisabled {
         }
 
         let calls = new_parsed.find_all_descendants(new_parsed.root_node(), &|node| {
-            node.kind() == "call_expression" || node.kind() == "member_expression"
+            node.kind() == "call_expression"
         });
 
         for node in calls {
@@ -44,14 +44,18 @@ impl Rule for Tb002TestDisabled {
                 continue;
             }
 
-            let text = new_parsed.node_text(&node);
+            let text = new_parsed.node_text(&node).trim();
 
             let is_disabled = text.starts_with("xit(")
                 || text.starts_with("xdescribe(")
-                || text.contains(".skip(")
-                || text.contains(".skip ")
-                || text.contains("it.todo(")
-                || text.contains("test.fixme(");
+                || text.starts_with("describe.skip(")
+                || text.starts_with("describe.skip ")
+                || text.starts_with("it.skip(")
+                || text.starts_with("it.skip ")
+                || text.starts_with("test.skip(")
+                || text.starts_with("test.skip ")
+                || text.starts_with("it.todo(")
+                || text.starts_with("test.fixme(");
 
             if is_disabled {
                 let (start_line, end_line) = ParsedSource::node_line_range(&node);

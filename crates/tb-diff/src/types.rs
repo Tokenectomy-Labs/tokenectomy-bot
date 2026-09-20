@@ -114,6 +114,56 @@ impl FileDiff {
     pub fn is_scannable(&self) -> bool {
         !self.is_binary && self.kind != FileKind::Ignored
     }
+
+    /// Reconstructs lines for new side from hunks when the full file is unavailable on disk
+    pub fn reconstruct_synthetic_new_source(&self) -> Option<String> {
+        if self.hunks.is_empty() {
+            return None;
+        }
+        let max_line = self
+            .hunks
+            .iter()
+            .flat_map(|h| h.lines.iter())
+            .filter_map(|l| l.new_lineno)
+            .max()?;
+
+        let mut lines = vec![String::new(); max_line];
+        for hunk in &self.hunks {
+            for line in &hunk.lines {
+                if let Some(n) = line.new_lineno {
+                    if n >= 1 && n <= max_line {
+                        lines[n - 1] = line.content.clone();
+                    }
+                }
+            }
+        }
+        Some(lines.join("\n"))
+    }
+
+    /// Reconstructs lines for old side from hunks when the full file is unavailable on disk
+    pub fn reconstruct_synthetic_old_source(&self) -> Option<String> {
+        if self.hunks.is_empty() {
+            return None;
+        }
+        let max_line = self
+            .hunks
+            .iter()
+            .flat_map(|h| h.lines.iter())
+            .filter_map(|l| l.old_lineno)
+            .max()?;
+
+        let mut lines = vec![String::new(); max_line];
+        for hunk in &self.hunks {
+            for line in &hunk.lines {
+                if let Some(n) = line.old_lineno {
+                    if n >= 1 && n <= max_line {
+                        lines[n - 1] = line.content.clone();
+                    }
+                }
+            }
+        }
+        Some(lines.join("\n"))
+    }
 }
 
 #[derive(Debug, Clone, Default, PartialEq, Eq, Serialize, Deserialize)]

@@ -164,12 +164,20 @@ fn run_review(args: ReviewArgs) -> Result<i32> {
 
         for file in diff.scannable_files() {
             let full_path = repo_dir.join(&file.path);
-            if let Ok(content) = fs::read_to_string(&full_path) {
+            let new_content = fs::read_to_string(&full_path)
+                .ok()
+                .or_else(|| file.reconstruct_synthetic_new_source());
+            if let Some(content) = new_content {
                 new_map.insert(file.path.clone(), content);
             }
+
             let old_lookup = file.old_path.as_ref().unwrap_or(&file.path);
-            if let Ok(Some(old_content)) = GitExtractor::get_blob(&repo_dir, &args.base, old_lookup) {
-                old_map.insert(file.path.clone(), old_content);
+            let old_content = GitExtractor::get_blob(&repo_dir, &args.base, old_lookup)
+                .ok()
+                .flatten()
+                .or_else(|| file.reconstruct_synthetic_old_source());
+            if let Some(content) = old_content {
+                old_map.insert(file.path.clone(), content);
             }
         }
 
@@ -183,9 +191,12 @@ fn run_review(args: ReviewArgs) -> Result<i32> {
         for file in diff.scannable_files() {
             // Fetch old blob
             let old_lookup = file.old_path.as_ref().unwrap_or(&file.path);
-            if let Ok(Some(old_content)) = GitExtractor::get_blob(&repo_dir, &args.base, old_lookup)
-            {
-                old_map.insert(file.path.clone(), old_content);
+            let old_content = GitExtractor::get_blob(&repo_dir, &args.base, old_lookup)
+                .ok()
+                .flatten()
+                .or_else(|| file.reconstruct_synthetic_old_source());
+            if let Some(old_c) = old_content {
+                old_map.insert(file.path.clone(), old_c);
             }
 
             // Fetch new blob
@@ -202,7 +213,8 @@ fn run_review(args: ReviewArgs) -> Result<i32> {
                 GitExtractor::get_blob(&repo_dir, &args.head, &file.path)
                     .ok()
                     .flatten()
-            };
+            }
+            .or_else(|| file.reconstruct_synthetic_new_source());
 
             if let Some(content) = new_content {
                 new_map.insert(file.path.clone(), content);
