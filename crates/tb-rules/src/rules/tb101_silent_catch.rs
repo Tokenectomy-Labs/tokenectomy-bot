@@ -118,11 +118,110 @@ impl Rule for Tb101SilentCatch {
                         end_line,
                         start_col,
                         end_col,
-                        "Promise `.catch()` swallows rejected promises without handling or logging.".to_string(),
-                        Some("Handle the error or log it appropriately.".to_string()),
+                        "Promise .catch() with empty handler swallows errors silently.".to_string(),
+                        Some("Handle the error or log it.".to_string()),
                         node.kind(),
                         text,
                     ));
+                }
+            }
+        }
+
+        // 3. Check Python except clauses
+        let except_clauses = new_parsed.find_all_descendants(new_parsed.root_node(), &|node| {
+            node.kind() == "except_clause"
+        });
+
+        for node in except_clauses {
+            if !ParsedSource::node_overlaps_ranges(&node, &changed_ranges) {
+                continue;
+            }
+
+            let text = new_parsed.node_text(&node).trim();
+            if let Some((_, body)) = text.split_once(':') {
+                let trimmed_body = body.trim();
+                let is_pass_or_empty = trimmed_body.is_empty()
+                    || trimmed_body == "pass"
+                    || trimmed_body.lines().all(|l| {
+                        let t = l.trim();
+                        t.is_empty() || t == "pass" || t.starts_with('#')
+                    });
+
+                if is_pass_or_empty {
+                    let (start_line, end_line) = ParsedSource::node_line_range(&node);
+                    let (start_col, _) = ParsedSource::point_to_1indexed(node.start_position());
+                    let (_, end_col) = ParsedSource::point_to_1indexed(node.end_position());
+
+                    findings.push(Finding::new(
+                        self.id(),
+                        self.name(),
+                        self.default_severity(),
+                        Confidence::High,
+                        &ctx.file_diff.path,
+                        start_line,
+                        end_line,
+                        start_col,
+                        end_col,
+                        "Empty or pass-only except block swallows errors silently without logging or re-raising."
+                            .to_string(),
+                        Some("Log the error with logging or re-raise with raise.".to_string()),
+                        node.kind(),
+                        text,
+                    ));
+                }
+            }
+        }
+
+        // 4. Check Go if err != nil empty blocks
+        let if_statements = new_parsed.find_all_descendants(new_parsed.root_node(), &|node| {
+            node.kind() == "if_statement"
+        });
+
+        for node in if_statements {
+            if !ParsedSource::node_overlaps_ranges(&node, &changed_ranges) {
+                continue;
+            }
+
+            let text = new_parsed.node_text(&node).trim();
+            if text.contains("err != nil")
+                && let Some(block) = (0..node.child_count())
+                    .filter_map(|i| node.child(i))
+                    .find(|c| c.kind() == "block")
+            {
+                let b_text = new_parsed.node_text(&block).trim();
+                let inner = b_text.strip_prefix('{').unwrap_or(b_text);
+                let inner = inner.strip_suffix('}').unwrap_or(inner).trim();
+
+                let is_empty_or_comments = inner.is_empty()
+                    || inner.lines().all(|l| {
+                        let t = l.trim();
+                        t.is_empty()
+                            || t.starts_with("//")
+                            || t.starts_with("/*")
+                            || t.starts_with('*')
+                    });
+
+                if is_empty_or_comments {
+                    let (start_line, end_line) = ParsedSource::node_line_range(&node);
+                    let (start_col, _) = ParsedSource::point_to_1indexed(node.start_position());
+                    let (_, end_col) = ParsedSource::point_to_1indexed(node.end_position());
+
+                    findings.push(Finding::new(
+                            self.id(),
+                            self.name(),
+                            self.default_severity(),
+                            Confidence::High,
+                            &ctx.file_diff.path,
+                            start_line,
+                            end_line,
+                            start_col,
+                            end_col,
+                            "Empty if err != nil block swallows errors silently without handling or returning."
+                                .to_string(),
+                            Some("Handle the error, log it, or return err.".to_string()),
+                            node.kind(),
+                            text,
+                        ));
                 }
             }
         }
@@ -170,12 +269,91 @@ mod tests {
         };
 
         let rule = Tb101SilentCatch;
-        let findings = rule.check(&RuleContext {
-            file_diff: &file_diff,
-            old_parsed: None,
-            new_parsed: Some(&parsed),
-        });
+        let findings = rule.check(&RuleContext::new(&file_diff, None, Some(&parsed)));
 
+        assert_eq!(findings.len(), 1);
+        assert_eq!(findings[0].rule_id, "TB101");
+    }
+
+    #[test]
+    fn test_tb101_detects_python_pass_except() {
+        let code = "def fetch():\n    try:\n        call()\n    except Exception:\n        pass\n"
+            .to_string();
+        let parsed = ParsedSource::parse(&PathBuf::from("service.py"), code).unwrap();
+        let file_diff = FileDiff {
+            path: PathBuf::from("service.py"),
+            old_path: None,
+            status: DiffStatus::Modified,
+            kind: FileKind::Source,
+            is_binary: false,
+            hunks: vec![Hunk {
+                old_start: 3,
+                old_lines: 0,
+                new_start: 4,
+                new_lines: 2,
+                lines: vec![
+                    DiffLine {
+                        kind: LineKind::Added,
+                        old_lineno: None,
+                        new_lineno: Some(4),
+                        content: "    except Exception:".to_string(),
+                    },
+                    DiffLine {
+                        kind: LineKind::Added,
+                        old_lineno: None,
+                        new_lineno: Some(5),
+                        content: "        pass".to_string(),
+                    },
+                ],
+            }],
+        };
+
+        let rule = Tb101SilentCatch;
+        let findings = rule.check(&RuleContext::new(&file_diff, None, Some(&parsed)));
+        assert_eq!(findings.len(), 1);
+        assert_eq!(findings[0].rule_id, "TB101");
+    }
+
+    #[test]
+    fn test_tb101_detects_go_empty_err_if() {
+        let code = "package main\n\nfunc query() {\n    if err != nil {\n        // silently ignored\n    }\n}\n".to_string();
+        let parsed = ParsedSource::parse(&PathBuf::from("main.go"), code).unwrap();
+        let file_diff = FileDiff {
+            path: PathBuf::from("main.go"),
+            old_path: None,
+            status: DiffStatus::Modified,
+            kind: FileKind::Source,
+            is_binary: false,
+            hunks: vec![Hunk {
+                old_start: 3,
+                old_lines: 0,
+                new_start: 4,
+                new_lines: 3,
+                lines: vec![
+                    DiffLine {
+                        kind: LineKind::Added,
+                        old_lineno: None,
+                        new_lineno: Some(4),
+                        content: "    if err != nil {".to_string(),
+                    },
+                    DiffLine {
+                        kind: LineKind::Added,
+                        old_lineno: None,
+                        new_lineno: Some(5),
+                        content: "        // silently ignored".to_string(),
+                    },
+                    DiffLine {
+                        kind: LineKind::Added,
+                        old_lineno: None,
+                        new_lineno: Some(6),
+                        content: "    }".to_string(),
+                    },
+                ],
+            }],
+        };
+
+        let rule = Tb101SilentCatch;
+        let findings = rule.check(&RuleContext::new(&file_diff, None, Some(&parsed)));
         assert_eq!(findings.len(), 1);
         assert_eq!(findings[0].rule_id, "TB101");
     }

@@ -35,27 +35,46 @@ impl Rule for Tb002TestDisabled {
             return findings;
         }
 
-        let calls = new_parsed.find_all_descendants(new_parsed.root_node(), &|node| {
-            node.kind() == "call_expression"
+        let skip_nodes = new_parsed.find_all_descendants(new_parsed.root_node(), &|node| {
+            matches!(
+                node.kind(),
+                "call_expression" | "call" | "decorator" | "attribute_item"
+            )
         });
 
-        for node in calls {
+        for node in skip_nodes {
             if !ParsedSource::node_overlaps_ranges(&node, &changed_ranges) {
                 continue;
             }
 
             let text = new_parsed.node_text(&node).trim();
 
-            let is_disabled = text.starts_with("xit(")
-                || text.starts_with("xdescribe(")
-                || text.starts_with("describe.skip(")
-                || text.starts_with("describe.skip ")
-                || text.starts_with("it.skip(")
-                || text.starts_with("it.skip ")
-                || text.starts_with("test.skip(")
-                || text.starts_with("test.skip ")
-                || text.starts_with("it.todo(")
-                || text.starts_with("test.fixme(");
+            let is_disabled = match node.kind() {
+                "attribute_item" => text.contains("#[ignore"),
+                "decorator" => {
+                    text.contains("@pytest.mark.skip")
+                        || text.contains("@pytest.mark.xfail")
+                        || text.contains("@unittest.skip")
+                        || text.starts_with("@skip(")
+                }
+                "call" | "call_expression" => {
+                    text.starts_with("xit(")
+                        || text.starts_with("xdescribe(")
+                        || text.starts_with("describe.skip(")
+                        || text.starts_with("describe.skip ")
+                        || text.starts_with("it.skip(")
+                        || text.starts_with("it.skip ")
+                        || text.starts_with("test.skip(")
+                        || text.starts_with("test.skip ")
+                        || text.starts_with("it.todo(")
+                        || text.starts_with("test.fixme(")
+                        || text.starts_with("t.Skip(")
+                        || text.starts_with("t.Skipf(")
+                        || text.starts_with("t.SkipNow(")
+                        || text.starts_with("pytest.skip(")
+                }
+                _ => false,
+            };
 
             if is_disabled {
                 let (start_line, end_line) = ParsedSource::node_line_range(&node);
@@ -123,13 +142,101 @@ mod tests {
         };
 
         let rule = Tb002TestDisabled;
-        let findings = rule.check(&RuleContext {
-            file_diff: &file_diff,
-            old_parsed: None,
-            new_parsed: Some(&parsed),
-        });
+        let findings = rule.check(&RuleContext::new(&file_diff, None, Some(&parsed)));
 
         assert!(!findings.is_empty());
+        assert_eq!(findings[0].rule_id, "TB002");
+    }
+
+    #[test]
+    fn test_tb002_detects_python_pytest_skip() {
+        let code =
+            "@pytest.mark.skip(reason=\"temporary\")\ndef test_payment():\n    pass\n".to_string();
+        let parsed = ParsedSource::parse(&PathBuf::from("test_payment.py"), code).unwrap();
+        let file_diff = FileDiff {
+            path: PathBuf::from("test_payment.py"),
+            old_path: None,
+            status: DiffStatus::Modified,
+            kind: FileKind::Test,
+            is_binary: false,
+            hunks: vec![Hunk {
+                old_start: 1,
+                old_lines: 0,
+                new_start: 1,
+                new_lines: 1,
+                lines: vec![DiffLine {
+                    kind: LineKind::Added,
+                    old_lineno: None,
+                    new_lineno: Some(1),
+                    content: "@pytest.mark.skip(reason=\"temporary\")".to_string(),
+                }],
+            }],
+        };
+
+        let rule = Tb002TestDisabled;
+        let findings = rule.check(&RuleContext::new(&file_diff, None, Some(&parsed)));
+        assert_eq!(findings.len(), 1);
+        assert_eq!(findings[0].rule_id, "TB002");
+    }
+
+    #[test]
+    fn test_tb002_detects_go_t_skip() {
+        let code = "package auth\n\nfunc TestAuth(t *testing.T) {\n    t.Skip(\"flaky test\")\n}\n"
+            .to_string();
+        let parsed = ParsedSource::parse(&PathBuf::from("auth_test.go"), code).unwrap();
+        let file_diff = FileDiff {
+            path: PathBuf::from("auth_test.go"),
+            old_path: None,
+            status: DiffStatus::Modified,
+            kind: FileKind::Test,
+            is_binary: false,
+            hunks: vec![Hunk {
+                old_start: 3,
+                old_lines: 0,
+                new_start: 4,
+                new_lines: 1,
+                lines: vec![DiffLine {
+                    kind: LineKind::Added,
+                    old_lineno: None,
+                    new_lineno: Some(4),
+                    content: "    t.Skip(\"flaky test\")".to_string(),
+                }],
+            }],
+        };
+
+        let rule = Tb002TestDisabled;
+        let findings = rule.check(&RuleContext::new(&file_diff, None, Some(&parsed)));
+        assert_eq!(findings.len(), 1);
+        assert_eq!(findings[0].rule_id, "TB002");
+    }
+
+    #[test]
+    fn test_tb002_detects_rust_ignore() {
+        let code = "#[test]\n#[ignore]\nfn test_expensive() {}\n".to_string();
+        let parsed = ParsedSource::parse(&PathBuf::from("tests/expensive_test.rs"), code).unwrap();
+        let file_diff = FileDiff {
+            path: PathBuf::from("tests/expensive_test.rs"),
+            old_path: None,
+            status: DiffStatus::Modified,
+            kind: FileKind::Test,
+            is_binary: false,
+            hunks: vec![Hunk {
+                old_start: 1,
+                old_lines: 0,
+                new_start: 2,
+                new_lines: 1,
+                lines: vec![DiffLine {
+                    kind: LineKind::Added,
+                    old_lineno: None,
+                    new_lineno: Some(2),
+                    content: "#[ignore]".to_string(),
+                }],
+            }],
+        };
+
+        let rule = Tb002TestDisabled;
+        let findings = rule.check(&RuleContext::new(&file_diff, None, Some(&parsed)));
+        assert_eq!(findings.len(), 1);
         assert_eq!(findings[0].rule_id, "TB002");
     }
 }

@@ -42,12 +42,7 @@ impl Rule for Tb102UnboundedQuery {
 
         let has_orm_import = imports.iter().any(|imp| {
             let text = new_parsed.node_text(imp);
-            text.contains("@prisma/client")
-                || text.contains("drizzle-orm")
-                || text.contains("typeorm")
-                || text.contains("mongoose")
-                || text.contains("sequelize")
-                || text.contains("knex")
+            ctx.is_orm_module(text)
         });
 
         // 2. Scan call expressions
@@ -144,11 +139,7 @@ mod tests {
         };
 
         let rule = Tb102UnboundedQuery;
-        let findings = rule.check(&RuleContext {
-            file_diff: &file_diff,
-            old_parsed: None,
-            new_parsed: Some(&parsed),
-        });
+        let findings = rule.check(&RuleContext::new(&file_diff, None, Some(&parsed)));
 
         assert_eq!(findings.len(), 1);
         assert_eq!(findings[0].rule_id, "TB102");

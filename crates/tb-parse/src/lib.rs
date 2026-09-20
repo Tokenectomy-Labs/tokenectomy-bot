@@ -8,6 +8,8 @@ pub enum SupportedLanguage {
     JavaScript,
     Jsx,
     Rust,
+    Python,
+    Go,
 }
 
 impl SupportedLanguage {
@@ -19,6 +21,8 @@ impl SupportedLanguage {
             "js" | "mjs" | "cjs" => Some(SupportedLanguage::JavaScript),
             "jsx" => Some(SupportedLanguage::Jsx),
             "rs" => Some(SupportedLanguage::Rust),
+            "py" | "pyi" => Some(SupportedLanguage::Python),
+            "go" => Some(SupportedLanguage::Go),
             _ => None,
         }
     }
@@ -31,6 +35,8 @@ impl SupportedLanguage {
                 tree_sitter_javascript::LANGUAGE.into()
             }
             SupportedLanguage::Rust => tree_sitter_rust::LANGUAGE.into(),
+            SupportedLanguage::Python => tree_sitter_python::LANGUAGE.into(),
+            SupportedLanguage::Go => tree_sitter_go::LANGUAGE.into(),
         }
     }
 }
@@ -172,5 +178,32 @@ mod tests {
         assert!(!ParsedSource::node_overlaps_ranges(&vars[0], &changed));
         assert!(ParsedSource::node_overlaps_ranges(&vars[1], &changed));
         assert!(!ParsedSource::node_overlaps_ranges(&vars[2], &changed));
+    }
+
+    #[test]
+    fn test_parse_python() {
+        let code = "@pytest.mark.skip\ndef hello():\n    eval('1+1')\n    assert True\n    try:\n        pass\n    except Exception:\n        pass\n".to_string();
+        let parsed = ParsedSource::parse(Path::new("test.py"), code).expect("must parse python");
+        let decs = parsed.find_all_descendants(parsed.root_node(), &|n| n.kind() == "decorator");
+        let calls = parsed.find_all_descendants(parsed.root_node(), &|n| n.kind() == "call");
+        let asserts =
+            parsed.find_all_descendants(parsed.root_node(), &|n| n.kind() == "assert_statement");
+        let excepts =
+            parsed.find_all_descendants(parsed.root_node(), &|n| n.kind() == "except_clause");
+        assert_eq!(decs.len(), 1);
+        assert_eq!(calls.len(), 1);
+        assert_eq!(asserts.len(), 1);
+        assert_eq!(excepts.len(), 1);
+    }
+
+    #[test]
+    fn test_parse_go() {
+        let code = "package main\n\nfunc TestFoo(t *testing.T) {\n\tt.Skip(\"reason\")\n\tif err != nil {\n\t}\n}\n".to_string();
+        let parsed = ParsedSource::parse(Path::new("main_test.go"), code).expect("must parse go");
+        let calls =
+            parsed.find_all_descendants(parsed.root_node(), &|n| n.kind() == "call_expression");
+        let ifs = parsed.find_all_descendants(parsed.root_node(), &|n| n.kind() == "if_statement");
+        assert!(!calls.is_empty());
+        assert!(!ifs.is_empty());
     }
 }

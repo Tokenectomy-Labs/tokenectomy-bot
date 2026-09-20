@@ -14,6 +14,7 @@ sha2.workspace = true
 tb-diff.workspace = true
 tb-parse.workspace = true
 tree-sitter.workspace = true
+globset.workspace = true
 
 [dev-dependencies]
 tempfile.workspace = true

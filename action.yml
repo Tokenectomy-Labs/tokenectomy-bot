@@ -1,43 +1,96 @@
 name: 'Tokenectomy Bot PR Gate'
-description: 'Deterministic AST-based PR reviewer catching structural bugs, security holes, and AI agent test tampering.'
+description: 'Deterministic, zero-LLM AST-based Pull Request verification gate catching test tampering, reliability hazards, and security vulnerabilities.'
 author: 'Tokenectomy Labs'
+
+branding:
+  icon: 'shield'
+  color: 'green'
 
 inputs:
   base:
-    description: 'Base git reference'
+    description: 'Base git reference (e.g. origin/main, main, HEAD~1)'
     required: false
     default: 'origin/main'
   head:
-    description: 'Head git reference'
+    description: 'Head git reference (e.g. HEAD, feature-branch)'
     required: false
     default: 'HEAD'
+  config:
+    description: 'Path to custom tokenectomy.json configuration file'
+    required: false
+  baseline:
+    description: 'Path to baseline JSON file containing fingerprints to ignore'
+    required: false
   fail_on:
     description: 'Failure threshold (error, warn, none)'
     required: false
     default: 'error'
+  fail_open:
+    description: 'Fail open (exit 0) if internal git or tool error occurs'
+    required: false
+    default: 'true'
   format:
     description: 'Report output format (text, json, sarif, github, summary, review-batch)'
     required: false
     default: 'github'
   agent_pr:
-    description: 'Enforce Agent PR mode (escalate anti-tampering rules to error)'
+    description: 'Enforce Agent PR mode (escalates anti-tampering rules TB001-TB005 to error)'
     required: false
     default: 'false'
+  step_summary:
+    description: 'Automatically write sticky markdown summary to $GITHUB_STEP_SUMMARY'
+    required: false
+    default: 'true'
+  output_file:
+    description: 'Path to save report file (e.g. tokenectomy-report.sarif or tokenectomy-summary.md)'
+    required: false
+
+outputs:
+  exit_code:
+    description: 'Gate exit code (0: passed, 1: blocked by gate policy)'
+    value: ${{ steps.run-bot.outputs.exit_code }}
 
 runs:
   using: 'composite'
   steps:
     - name: Run Tokenectomy Bot
+      id: run-bot
       shell: bash
       run: |
-        AGENT_FLAG=""
-        if [ "${{ inputs.agent_pr }}" = "true" ]; then
-          AGENT_FLAG="--agent-pr"
+        ARGS=()
+        ARGS+=(--base "${{ inputs.base }}")
+        ARGS+=(--head "${{ inputs.head }}")
+        ARGS+=(--fail-on "${{ inputs.fail_on }}")
+        ARGS+=(--format "${{ inputs.format }}")
+
+        if [ -n "${{ inputs.config }}" ]; then
+          ARGS+=(--config "${{ inputs.config }}")
         fi
 
-        cargo run --quiet -p tb-cli -- review \
-          --base "${{ inputs.base }}" \
-          --head "${{ inputs.head }}" \
-          --fail-on "${{ inputs.fail_on }}" \
-          --format "${{ inputs.format }}" \
-          $AGENT_FLAG
+        if [ -n "${{ inputs.baseline }}" ]; then
+          ARGS+=(--baseline "${{ inputs.baseline }}")
+        fi
+
+        if [ "${{ inputs.agent_pr }}" = "true" ]; then
+          ARGS+=(--agent-pr)
+        fi
+
+        if [ "${{ inputs.fail_open }}" = "true" ]; then
+          ARGS+=(--fail-open)
+        fi
+
+        if [ "${{ inputs.step_summary }}" = "true" ]; then
+          ARGS+=(--step-summary)
+        fi
+
+        if [ -n "${{ inputs.output_file }}" ]; then
+          ARGS+=(--output "${{ inputs.output_file }}")
+        fi
+
+        set +e
+        cargo run --quiet -p tb-cli -- review "${ARGS[@]}"
+        EC=$?
+        set -e
+
+        echo "exit_code=$EC" >> "$GITHUB_OUTPUT"
+        exit $EC

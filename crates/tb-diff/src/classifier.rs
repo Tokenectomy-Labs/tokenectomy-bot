@@ -133,7 +133,9 @@ fn is_test_path(path_str: &str, file_name: &str) -> bool {
         || lower.ends_with(".spec.jsx")
         || lower.ends_with("_test.go")
         || lower.ends_with("_test.rs")
+        || lower.ends_with("_test.py")
         || lower.ends_with("test.py")
+        || (lower.starts_with("test_") && lower.ends_with(".py"))
 }
 
 fn is_config_path(_path_str: &str, file_name: &str) -> bool {

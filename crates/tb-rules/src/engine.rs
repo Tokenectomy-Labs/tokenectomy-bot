@@ -3,6 +3,7 @@ use std::path::PathBuf;
 use tb_diff::DiffResult;
 use tb_parse::ParsedSource;
 
+use crate::config::{Config, Preset};
 use crate::model::{Finding, RuleContext, Severity};
 use crate::rules::{
     Tb001AssertionRemoved, Tb002TestDisabled, Tb003TautologicalAssertion, Tb004ConfigWeakened,
@@ -16,6 +17,7 @@ pub struct RuleEngine {
     rules: Vec<Box<dyn Rule>>,
     baseline: HashSet<String>,
     agent_mode: bool,
+    config: Config,
 }
 
 impl Default for RuleEngine {
@@ -46,6 +48,7 @@ impl RuleEngine {
             rules,
             baseline: HashSet::new(),
             agent_mode: false,
+            config: Config::default(),
         }
     }
 
@@ -57,6 +60,15 @@ impl RuleEngine {
     pub fn with_agent_mode(mut self, agent_mode: bool) -> Self {
         self.agent_mode = agent_mode;
         self
+    }
+
+    pub fn with_config(mut self, config: Config) -> Self {
+        self.config = config;
+        self
+    }
+
+    pub fn config(&self) -> &Config {
+        &self.config
     }
 
     pub fn rules(&self) -> &[Box<dyn Rule>] {
@@ -73,6 +85,11 @@ impl RuleEngine {
         let mut seen_fingerprints = HashSet::new();
 
         for file_diff in diff.scannable_files() {
+            // Check if file is ignored by tokenectomy.json ignore patterns
+            if self.config.is_path_ignored(&file_diff.path) {
+                continue;
+            }
+
             let old_parsed = old_sources
                 .get(&file_diff.path)
                 .and_then(|content| ParsedSource::parse(&file_diff.path, content.clone()).ok());
@@ -87,15 +104,30 @@ impl RuleEngine {
                 file_diff,
                 old_parsed: old_parsed.as_ref(),
                 new_parsed: new_parsed.as_ref(),
+                logger_names: self.config.logger_names.as_deref(),
+                orm_modules: self.config.orm_modules.as_deref(),
             };
 
             for rule in &self.rules {
+                let (enabled, configured_severity) = self.config.effective_rule_setting(
+                    rule.id(),
+                    Some(&file_diff.path),
+                    rule.default_severity(),
+                );
+
+                if !enabled {
+                    continue;
+                }
+
                 if rule.needs_old_side() && old_parsed.is_none() {
                     continue;
                 }
 
                 let findings = rule.check(&ctx);
                 for mut finding in findings {
+                    // Apply configured severity override
+                    finding.severity = configured_severity;
+
                     // Check inline suppression // tokenectomy-ignore: TBxxx
                     if new_content
                         .is_some_and(|src| is_suppressed(src, finding.start_line, &finding.rule_id))
@@ -109,7 +141,9 @@ impl RuleEngine {
                     }
 
                     // Agent PR mode upgrades TB001-TB005 to Error
-                    if self.agent_mode && finding.rule_id.starts_with("TB00") {
+                    if (self.agent_mode || self.config.extends == Some(Preset::AgentPr))
+                        && finding.rule_id.starts_with("TB00")
+                    {
                         finding.severity = Severity::Error;
                     }
 

@@ -9,12 +9,14 @@ use anyhow::{Context, Result};
 use clap::{Parser, Subcommand, ValueEnum};
 use colored::*;
 
+mod mcp;
+
 use tb_diff::{DiffParser, GitExtractor};
 use tb_report::{
     FailOn, GatePolicy, GitHubAnnotationReporter, JsonReporter, ReviewBatchGenerator,
     SarifReporter, StickySummaryReporter, TextReporter,
 };
-use tb_rules::RuleEngine;
+use tb_rules::{Config, RuleEngine};
 
 #[derive(Parser)]
 #[command(
@@ -45,6 +47,9 @@ enum Commands {
         #[arg(short, long, default_value_t = 1000)]
         count: usize,
     },
+
+    /// Start autonomous Model Context Protocol (MCP) JSON-RPC stdio server
+    Mcp,
 }
 
 #[derive(Debug, Clone, Copy, ValueEnum)]
@@ -59,6 +64,9 @@ enum OutputFormat {
 
 #[derive(Parser)]
 pub struct ReviewArgs {
+    /// Path to custom tokenectomy.json configuration file
+    #[arg(short, long)]
+    config: Option<PathBuf>,
     /// Base git reference (e.g. main, origin/main, HEAD~1)
     #[arg(short, long, default_value = "origin/main")]
     base: String,
@@ -124,6 +132,12 @@ fn main() {
         }
         Commands::Benchmark { count } => {
             run_benchmark(count);
+        }
+        Commands::Mcp => {
+            if let Err(e) = mcp::run_mcp_server() {
+                eprintln!("{}: {}", "MCP Server Error".red().bold(), e);
+                process::exit(1);
+            }
         }
         Commands::Review(args) => {
             let fail_open = args.fail_open;
@@ -355,9 +369,41 @@ fn run_review(args: ReviewArgs) -> Result<i32> {
         || args.head.starts_with("cline/")
         || args.head.starts_with("copilot/");
 
+    let config = if let Some(ref config_path) = args.config {
+        Config::load_from_file(config_path)
+            .with_context(|| format!("Failed to load configuration file at {:?}", config_path))?
+    } else {
+        let default_cfg = repo_dir.join("tokenectomy.json");
+        let dot_cfg = repo_dir.join(".tokenectomy.json");
+        if default_cfg.exists() {
+            Config::load_from_file(&default_cfg)
+                .with_context(|| format!("Failed to load configuration from {:?}", default_cfg))?
+        } else if dot_cfg.exists() {
+            Config::load_from_file(&dot_cfg)
+                .with_context(|| format!("Failed to load configuration from {:?}", dot_cfg))?
+        } else {
+            Config::default()
+        }
+    };
+
+    let effective_fail_on = if args.fail_on == FailOn::Error {
+        if let Some(ref cf) = config.fail_on {
+            match cf.to_lowercase().as_str() {
+                "warn" | "warning" => FailOn::Warn,
+                "none" | "info" => FailOn::None,
+                _ => FailOn::Error,
+            }
+        } else {
+            args.fail_on
+        }
+    } else {
+        args.fail_on
+    };
+
     let engine = RuleEngine::new()
         .with_baseline(baseline_set)
-        .with_agent_mode(is_agent);
+        .with_agent_mode(is_agent)
+        .with_config(config);
     let findings = engine.run(&diff, &old_sources, &new_sources);
 
     let output_str = match args.format {
@@ -387,6 +433,6 @@ fn run_review(args: ReviewArgs) -> Result<i32> {
         println!("{}", output_str);
     }
 
-    let exit_code = GatePolicy::evaluate_exit_code(&findings, args.fail_on);
+    let exit_code = GatePolicy::evaluate_exit_code(&findings, effective_fail_on);
     Ok(exit_code)
 }

@@ -118,11 +118,7 @@ mod tests {
         };
 
         let rule = Tb203RawSqlInterpolation;
-        let findings = rule.check(&RuleContext {
-            file_diff: &file_diff,
-            old_parsed: None,
-            new_parsed: Some(&parsed),
-        });
+        let findings = rule.check(&RuleContext::new(&file_diff, None, Some(&parsed)));
 
         assert_eq!(findings.len(), 1);
         assert_eq!(findings[0].rule_id, "TB203");

@@ -140,11 +140,7 @@ mod tests {
         };
 
         let rule = Tb009FixtureSnooping;
-        let findings = rule.check(&RuleContext {
-            file_diff: &file_diff,
-            old_parsed: None,
-            new_parsed: Some(&parsed),
-        });
+        let findings = rule.check(&RuleContext::new(&file_diff, None, Some(&parsed)));
 
         assert!(!findings.is_empty());
         assert_eq!(findings[0].rule_id, "TB009");

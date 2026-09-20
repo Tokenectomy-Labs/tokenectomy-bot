@@ -1,0 +1,106 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "TokenectomyBotConfig",
+  "description": "Configuration schema for Tokenectomy PR Verification Gate (tokenectomy.json)",
+  "type": "object",
+  "properties": {
+    "$schema": {
+      "type": "string",
+      "description": "JSON schema reference for editor validation and autocompletion"
+    },
+    "extends": {
+      "type": "string",
+      "enum": ["recommended", "strict", "agent-pr"],
+      "default": "recommended",
+      "description": "Base preset rule configuration: 'recommended' (balanced), 'strict' (all rules error), or 'agent-pr' (anti-tampering always error)"
+    },
+    "fail_on": {
+      "type": "string",
+      "enum": ["error", "warn", "info"],
+      "default": "error",
+      "description": "Threshold severity that triggers non-zero exit code gate failure"
+    },
+    "rules": {
+      "type": "object",
+      "description": "Per-rule enablement and severity overrides",
+      "additionalProperties": {
+        "anyOf": [
+          {
+            "type": "string",
+            "enum": ["off", "warn", "warning", "error", "info"],
+            "description": "Rule state shortcut: 'off' to disable, or severity name to enable"
+          },
+          {
+            "type": "object",
+            "properties": {
+              "enabled": {
+                "type": "boolean",
+                "description": "Whether the rule is enabled"
+              },
+              "severity": {
+                "type": "string",
+                "enum": ["error", "warn", "warning", "info"],
+                "description": "Severity level override"
+              }
+            },
+            "required": ["enabled"]
+          }
+        ]
+      }
+    },
+    "ignore": {
+      "type": "array",
+      "items": { "type": "string" },
+      "description": "Glob patterns for file paths to completely exclude from scanning"
+    },
+    "logger_names": {
+      "type": "array",
+      "items": { "type": "string" },
+      "description": "Custom identifiers or member expressions recognized as loggers for rule TB101 (silent-catch)"
+    },
+    "orm_modules": {
+      "type": "array",
+      "items": { "type": "string" },
+      "description": "Custom ORM import module names recognized for rule TB102 (unbounded-query)"
+    },
+    "overrides": {
+      "type": "array",
+      "description": "Path-specific rule overrides (e.g. relaxing checks in test or legacy files)",
+      "items": {
+        "type": "object",
+        "properties": {
+          "files": {
+            "type": "array",
+            "items": { "type": "string" },
+            "description": "Glob patterns matching target files for this override block"
+          },
+          "rules": {
+            "type": "object",
+            "description": "Rule overrides applied to files matching this block",
+            "additionalProperties": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "enum": ["off", "warn", "warning", "error", "info"]
+                },
+                {
+                  "type": "object",
+                  "properties": {
+                    "enabled": { "type": "boolean" },
+                    "severity": {
+                      "type": "string",
+                      "enum": ["error", "warn", "warning", "info"]
+                    }
+                  },
+                  "required": ["enabled"]
+                }
+              ]
+            }
+          }
+        },
+        "required": ["files", "rules"]
+      }
+    }
+  },
+  "additionalProperties": false
+}

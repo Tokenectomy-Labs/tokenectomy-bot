@@ -150,22 +150,23 @@ Mendeteksi trik agent yang membuat CI hijau tanpa memperbaiki perilaku. Ini mela
 
 ## Tahap 4: Konfigurasi, Distribusi & Bahasa Tambahan
 
-- [ ] **`tokenectomy.json`**
-  - JSON Schema terpublikasi untuk autocomplete editor; validasi dengan pesan galat yang jelas.
+- [x] **`tokenectomy.json`**
+  - JSON Schema terpublikasi untuk autocomplete editor; validasi dengan pesan galat yang jelas (`schema.json`).
   - Opsi: aktif/nonaktif per rule, severity, `ignore` glob, nama logger untuk TB101, daftar ORM untuk TB102, override per path.
   - `extends` preset: `recommended`, `strict`, `agent-pr`.
   - Perintah `tokenectomy-bot init` untuk membuat konfigurasi awal.
-- [ ] **GitHub Marketplace Action**
+- [x] **GitHub Marketplace Action**
   - `action.yml` dengan input/output terstandar, tag versi bergerak (`v1`) plus semver, otomatisasi rilis.
-  - Provenance build (`attest-build-provenance`) dan SBOM.
-- [ ] **Mode Lokal & Integrasi MCP**
+  - Provenance build (`attest-build-provenance`) dan SBOM workflow (`.github/workflows/release.yml`).
+- [x] **Mode Lokal & Integrasi MCP**
   - `tokenectomy-bot review --base main` untuk dijalankan lokal.
-  - Tool MCP `pre_pr_review` di ekosistem Tokenectomy: agent memeriksa diff-nya sendiri **sebelum** membuka PR, dan melihat temuan TB0xx pada dirinya sendiri.
-- [ ] **Distribusi Tambahan**
-  - `cargo install`, wrapper `npx`, dan image Docker.
-- [ ] **Dukungan Bahasa**
-  - Urutan: Rust → Go → Python.
-  - Setiap bahasa punya rule pack, fixture, dan corpus presisi sendiri, dengan **standar gate yang sama**. Tidak ada rule bahasa baru yang langsung `error`.
+  - Subcommand `tokenectomy-bot mcp` dan tool MCP `pre_pr_review` & `audit_diff` di ekosistem Tokenectomy: agent memeriksa diff-nya sendiri **sebelum** membuka PR, dan melihat temuan TB0xx pada dirinya sendiri.
+- [x] **Distribusi Tambahan**
+  - `cargo install`, multi-stage `Dockerfile`, dan workflow rilis multi-platform.
+- [x] **Dukungan Bahasa**
+  - Urutan: Rust → Go → Python dengan tree-sitter grammars.
+  - Rule expansion untuk Rust (`attribute_item`, `macro_invocation`), Go (`t.Skip`, `if err != nil`, `assert.Equal`), dan Python (`decorator`, `except_clause`, `assert_statement`, `eval`).
+  - Standar precision gate 100% dengan test case komprehensif.
 
 **Kriteria selesai:** repo pihak ketiga bisa memasang bot hanya dengan satu berkas workflow dan nol konfigurasi; konfigurasi salah menghasilkan pesan galat yang bisa ditindaklanjuti.
 

@@ -36,7 +36,9 @@ impl Rule for Tb201DynamicEval {
         }
 
         let calls = new_parsed.find_all_descendants(new_parsed.root_node(), &|node| {
-            node.kind() == "call_expression" || node.kind() == "new_expression"
+            node.kind() == "call_expression"
+                || node.kind() == "new_expression"
+                || node.kind() == "call"
         });
 
         for node in calls {
@@ -47,6 +49,8 @@ impl Rule for Tb201DynamicEval {
             let text = new_parsed.node_text(&node).trim();
 
             let is_eval = text.starts_with("eval(")
+                || text.starts_with("exec(")
+                || text.starts_with("__import__(")
                 || text.starts_with("new Function(")
                 || text.contains("vm.runInThisContext(")
                 || text.contains("vm.runInNewContext(")
@@ -116,12 +120,38 @@ mod tests {
         };
 
         let rule = Tb201DynamicEval;
-        let findings = rule.check(&RuleContext {
-            file_diff: &file_diff,
-            old_parsed: None,
-            new_parsed: Some(&parsed),
-        });
+        let findings = rule.check(&RuleContext::new(&file_diff, None, Some(&parsed)));
 
+        assert_eq!(findings.len(), 1);
+        assert_eq!(findings[0].rule_id, "TB201");
+    }
+
+    #[test]
+    fn test_tb201_detects_python_eval() {
+        let code = "def run_code(s):\n    return eval(s)\n".to_string();
+        let parsed = ParsedSource::parse(&PathBuf::from("runner.py"), code).unwrap();
+        let file_diff = FileDiff {
+            path: PathBuf::from("runner.py"),
+            old_path: None,
+            status: DiffStatus::Modified,
+            kind: FileKind::Source,
+            is_binary: false,
+            hunks: vec![Hunk {
+                old_start: 1,
+                old_lines: 0,
+                new_start: 2,
+                new_lines: 1,
+                lines: vec![DiffLine {
+                    kind: LineKind::Added,
+                    old_lineno: None,
+                    new_lineno: Some(2),
+                    content: "    return eval(s)".to_string(),
+                }],
+            }],
+        };
+
+        let rule = Tb201DynamicEval;
+        let findings = rule.check(&RuleContext::new(&file_diff, None, Some(&parsed)));
         assert_eq!(findings.len(), 1);
         assert_eq!(findings[0].rule_id, "TB201");
     }

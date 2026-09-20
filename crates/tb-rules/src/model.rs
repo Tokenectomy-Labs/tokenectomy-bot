@@ -120,4 +120,50 @@ pub struct RuleContext<'a> {
     pub file_diff: &'a FileDiff,
     pub old_parsed: Option<&'a ParsedSource>,
     pub new_parsed: Option<&'a ParsedSource>,
+    pub logger_names: Option<&'a [String]>,
+    pub orm_modules: Option<&'a [String]>,
+}
+
+impl<'a> RuleContext<'a> {
+    pub fn new(
+        file_diff: &'a FileDiff,
+        old_parsed: Option<&'a ParsedSource>,
+        new_parsed: Option<&'a ParsedSource>,
+    ) -> Self {
+        Self {
+            file_diff,
+            old_parsed,
+            new_parsed,
+            logger_names: None,
+            orm_modules: None,
+        }
+    }
+
+    pub fn is_logger_name(&self, name: &str) -> bool {
+        if let Some(custom) = self.logger_names
+            && custom.iter().any(|c| c == name)
+        {
+            return true;
+        }
+        matches!(
+            name,
+            "console" | "logger" | "log" | "tracing" | "slog" | "env_logger"
+        )
+    }
+
+    pub fn is_orm_module(&self, name: &str) -> bool {
+        if let Some(custom) = self.orm_modules
+            && custom.iter().any(|c| name.contains(c.as_str()))
+        {
+            return true;
+        }
+        name.contains("@prisma/client")
+            || name.contains("prisma")
+            || name.contains("drizzle-orm")
+            || name.contains("typeorm")
+            || name.contains("mongoose")
+            || name.contains("sequelize")
+            || name.contains("knex")
+            || name.contains("kysely")
+    }
 }

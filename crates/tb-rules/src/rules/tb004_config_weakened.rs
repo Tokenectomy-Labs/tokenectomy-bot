@@ -120,11 +120,7 @@ mod tests {
         };
 
         let rule = Tb004ConfigWeakened;
-        let findings = rule.check(&RuleContext {
-            file_diff: &file_diff,
-            old_parsed: None,
-            new_parsed: None,
-        });
+        let findings = rule.check(&RuleContext::new(&file_diff, None, None));
 
         assert_eq!(findings.len(), 1);
         assert_eq!(findings[0].rule_id, "TB004");
@@ -153,11 +149,7 @@ mod tests {
         };
 
         let rule = Tb004ConfigWeakened;
-        let findings = rule.check(&RuleContext {
-            file_diff: &file_diff,
-            old_parsed: None,
-            new_parsed: None,
-        });
+        let findings = rule.check(&RuleContext::new(&file_diff, None, None));
 
         assert_eq!(findings.len(), 1);
         assert_eq!(findings[0].rule_id, "TB004");
