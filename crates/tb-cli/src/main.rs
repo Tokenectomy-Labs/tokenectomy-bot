@@ -79,6 +79,14 @@ pub struct ReviewArgs {
     /// Fail open (exit 0) if internal git or tool error occurs
     #[arg(long, default_value_t = true)]
     fail_open: bool,
+
+    /// Path to baseline JSON file containing fingerprints to ignore
+    #[arg(long)]
+    baseline: Option<PathBuf>,
+
+    /// Force Agent PR mode (upgrades TB001-TB005 anti-tampering rules to error)
+    #[arg(long)]
+    agent_pr: bool,
 }
 
 fn main() {
@@ -224,7 +232,45 @@ fn run_review(args: ReviewArgs) -> Result<i32> {
         (diff, old_map, new_map)
     };
 
-    let engine = RuleEngine::default();
+    let baseline_set = {
+        let path = args.baseline.or_else(|| {
+            let default_p = repo_dir.join(".tokenectomy-baseline.json");
+            if default_p.exists() {
+                Some(default_p)
+            } else {
+                None
+            }
+        });
+
+        let mut set = std::collections::HashSet::new();
+        if let Some(content) = path.and_then(|p| fs::read_to_string(p).ok()) {
+            if let Ok(list) = serde_json::from_str::<Vec<String>>(&content) {
+                set.extend(list);
+            } else if let Some(arr) = serde_json::from_str::<serde_json::Value>(&content)
+                .ok()
+                .and_then(|v| v.get("fingerprints").cloned())
+                .and_then(|v| v.as_array().cloned())
+            {
+                for item in arr {
+                    if let Some(s) = item.as_str() {
+                        set.insert(s.to_string());
+                    }
+                }
+            }
+        }
+        set
+    };
+
+    let is_agent = args.agent_pr
+        || args.head.starts_with("agent/")
+        || args.head.starts_with("bot/")
+        || args.head.starts_with("cursor/")
+        || args.head.starts_with("cline/")
+        || args.head.starts_with("copilot/");
+
+    let engine = RuleEngine::new()
+        .with_baseline(baseline_set)
+        .with_agent_mode(is_agent);
     let findings = engine.run(&diff, &old_sources, &new_sources);
 
     let output_str = match args.format {

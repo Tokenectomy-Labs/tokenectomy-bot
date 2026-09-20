@@ -130,10 +130,8 @@ impl FileDiff {
         let mut lines = vec![String::new(); max_line];
         for hunk in &self.hunks {
             for line in &hunk.lines {
-                if let Some(n) = line.new_lineno {
-                    if n >= 1 && n <= max_line {
-                        lines[n - 1] = line.content.clone();
-                    }
+                if let Some(n) = line.new_lineno.filter(|&n| (1..=max_line).contains(&n)) {
+                    lines[n - 1] = line.content.clone();
                 }
             }
         }
@@ -155,10 +153,8 @@ impl FileDiff {
         let mut lines = vec![String::new(); max_line];
         for hunk in &self.hunks {
             for line in &hunk.lines {
-                if let Some(n) = line.old_lineno {
-                    if n >= 1 && n <= max_line {
-                        lines[n - 1] = line.content.clone();
-                    }
+                if let Some(n) = line.old_lineno.filter(|&n| (1..=max_line).contains(&n)) {
+                    lines[n - 1] = line.content.clone();
                 }
             }
         }

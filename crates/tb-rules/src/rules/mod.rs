@@ -1,9 +1,27 @@
 pub mod tb001_assertion_removed;
 pub mod tb002_test_disabled;
 pub mod tb003_tautological_assertion;
+pub mod tb004_config_weakened;
+pub mod tb005_early_exit_injected;
+pub mod tb006_test_deleted;
+pub mod tb009_fixture_snooping;
 pub mod tb101_silent_catch;
+pub mod tb102_unbounded_query;
+pub mod tb104_async_foreach;
+pub mod tb201_dynamic_eval;
+pub mod tb202_shell_injection;
+pub mod tb203_raw_sql_interpolation;
 
 pub use tb001_assertion_removed::Tb001AssertionRemoved;
 pub use tb002_test_disabled::Tb002TestDisabled;
 pub use tb003_tautological_assertion::Tb003TautologicalAssertion;
+pub use tb004_config_weakened::Tb004ConfigWeakened;
+pub use tb005_early_exit_injected::Tb005EarlyExitInjected;
+pub use tb006_test_deleted::Tb006TestDeleted;
+pub use tb009_fixture_snooping::Tb009FixtureSnooping;
 pub use tb101_silent_catch::Tb101SilentCatch;
+pub use tb102_unbounded_query::Tb102UnboundedQuery;
+pub use tb104_async_foreach::Tb104AsyncForeach;
+pub use tb201_dynamic_eval::Tb201DynamicEval;
+pub use tb202_shell_injection::Tb202ShellInjection;
+pub use tb203_raw_sql_interpolation::Tb203RawSqlInterpolation;

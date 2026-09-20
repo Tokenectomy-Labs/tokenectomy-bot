@@ -46,7 +46,10 @@ impl Rule for Tb003TautologicalAssertion {
 
             let text = new_parsed.node_text(&node).trim();
 
-            if !text.starts_with("expect(") && !text.starts_with("assert(") && !text.starts_with("assert.") {
+            if !text.starts_with("expect(")
+                && !text.starts_with("assert(")
+                && !text.starts_with("assert.")
+            {
                 continue;
             }
 

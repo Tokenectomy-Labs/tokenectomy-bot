@@ -3,14 +3,19 @@ use std::path::PathBuf;
 use tb_diff::DiffResult;
 use tb_parse::ParsedSource;
 
-use crate::model::{Finding, RuleContext};
+use crate::model::{Finding, RuleContext, Severity};
 use crate::rules::{
-    Tb001AssertionRemoved, Tb002TestDisabled, Tb003TautologicalAssertion, Tb101SilentCatch,
+    Tb001AssertionRemoved, Tb002TestDisabled, Tb003TautologicalAssertion, Tb004ConfigWeakened,
+    Tb005EarlyExitInjected, Tb006TestDeleted, Tb009FixtureSnooping, Tb101SilentCatch,
+    Tb102UnboundedQuery, Tb104AsyncForeach, Tb201DynamicEval, Tb202ShellInjection,
+    Tb203RawSqlInterpolation,
 };
 use crate::traits::Rule;
 
 pub struct RuleEngine {
     rules: Vec<Box<dyn Rule>>,
+    baseline: HashSet<String>,
+    agent_mode: bool,
 }
 
 impl Default for RuleEngine {
@@ -25,14 +30,33 @@ impl RuleEngine {
             Box::new(Tb001AssertionRemoved),
             Box::new(Tb002TestDisabled),
             Box::new(Tb003TautologicalAssertion),
+            Box::new(Tb004ConfigWeakened),
+            Box::new(Tb005EarlyExitInjected),
+            Box::new(Tb006TestDeleted),
+            Box::new(Tb009FixtureSnooping),
             Box::new(Tb101SilentCatch),
+            Box::new(Tb102UnboundedQuery),
+            Box::new(Tb104AsyncForeach),
+            Box::new(Tb201DynamicEval),
+            Box::new(Tb202ShellInjection),
+            Box::new(Tb203RawSqlInterpolation),
         ];
 
-        Self { rules }
+        Self {
+            rules,
+            baseline: HashSet::new(),
+            agent_mode: false,
+        }
     }
 
-    pub fn with_rules(rules: Vec<Box<dyn Rule>>) -> Self {
-        Self { rules }
+    pub fn with_baseline(mut self, baseline: HashSet<String>) -> Self {
+        self.baseline = baseline;
+        self
+    }
+
+    pub fn with_agent_mode(mut self, agent_mode: bool) -> Self {
+        self.agent_mode = agent_mode;
+        self
     }
 
     pub fn rules(&self) -> &[Box<dyn Rule>] {
@@ -67,17 +91,26 @@ impl RuleEngine {
 
             for rule in &self.rules {
                 if rule.needs_old_side() && old_parsed.is_none() {
-                    // Skip if rule requires old side but not available
                     continue;
                 }
 
                 let findings = rule.check(&ctx);
-                for finding in findings {
+                for mut finding in findings {
                     // Check inline suppression // tokenectomy-ignore: TBxxx
                     if new_content
                         .is_some_and(|src| is_suppressed(src, finding.start_line, &finding.rule_id))
                     {
                         continue;
+                    }
+
+                    // Check baseline (.tokenectomy-baseline.json)
+                    if self.baseline.contains(&finding.fingerprint) {
+                        continue;
+                    }
+
+                    // Agent PR mode upgrades TB001-TB005 to Error
+                    if self.agent_mode && finding.rule_id.starts_with("TB00") {
+                        finding.severity = Severity::Error;
                     }
 
                     if seen_fingerprints.insert(finding.fingerprint.clone()) {
@@ -134,5 +167,13 @@ mod tests {
         "#;
         assert!(is_suppressed(code, 3, "TB101"));
         assert!(!is_suppressed(code, 3, "TB002"));
+    }
+
+    #[test]
+    fn test_baseline_filtering() {
+        let mut baseline = HashSet::new();
+        baseline.insert("deadbeef1234".to_string());
+        let engine = RuleEngine::new().with_baseline(baseline);
+        assert!(engine.baseline.contains("deadbeef1234"));
     }
 }
