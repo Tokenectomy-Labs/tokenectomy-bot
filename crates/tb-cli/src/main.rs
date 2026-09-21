@@ -571,6 +571,7 @@ fn run_review(args: ReviewArgs) -> Result<i32> {
     if args.step_summary {
         let summary_md = StickySummaryReporter::format(&findings, total_scanned, total_files);
         let _ = StickySummaryReporter::write_to_step_summary(&summary_md);
+        let _ = fs::write("/tmp/tokenectomy-sticky-summary.md", &summary_md);
     }
 
     if let Some(ref out_path) = args.output {

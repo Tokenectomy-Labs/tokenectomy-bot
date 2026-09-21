@@ -108,10 +108,6 @@ runs:
         PR_NUM="${{ github.event.pull_request.number }}"
         if [ -n "$PR_NUM" ] && [ "${{ inputs.pr_comment }}" = "true" ] && [ -n "${{ inputs.github_token }}" ]; then
           SUMMARY_FILE="/tmp/tokenectomy-sticky-summary.md"
-          SUMMARY_ARGS=("${ARGS[@]}")
-          # Replace format with summary for the markdown comment
-          cargo run --manifest-path "${{ github.action_path }}/Cargo.toml" --quiet -p tb-cli -- review "${SUMMARY_ARGS[@]}" --format summary --output "$SUMMARY_FILE" || true
-
           if [ -f "$SUMMARY_FILE" ]; then
             python3 "${{ github.action_path }}/scripts/post_pr_comment.py" \
               --repo "${{ github.repository }}" \
