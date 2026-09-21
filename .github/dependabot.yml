@@ -1,0 +1,29 @@
+version: 2
+updates:
+  # Autonomous M2M Cargo Dependency Monitoring
+  - package-ecosystem: "cargo"
+    directory: "/"
+    schedule:
+      interval: "daily"
+    open-pull-requests-limit: 10
+    labels:
+      - "dependencies"
+      - "m2m-automated"
+      - "cargo"
+    commit-message:
+      prefix: "chore(deps)"
+      include: "scope"
+
+  # Autonomous M2M GitHub Actions CI Monitoring
+  - package-ecosystem: "github-actions"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+    open-pull-requests-limit: 5
+    labels:
+      - "dependencies"
+      - "m2m-automated"
+      - "github-actions"
+    commit-message:
+      prefix: "ci(deps)"
+      include: "scope"

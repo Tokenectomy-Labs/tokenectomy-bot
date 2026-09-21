@@ -1,0 +1,28 @@
+name: Tmy-Joy PR Gate
+
+on:
+  pull_request:
+    branches: [main]
+
+permissions:
+  contents: write
+  pull-requests: write
+  issues: write
+
+jobs:
+  gate:
+    name: Deterministic AST Quality Gate
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Run Tmy-Joy PR Gate
+        uses: ./
+        with:
+          base: origin/${{ github.base_ref || 'main' }}
+          head: HEAD
+          pr_comment: 'true'
+          github_token: ${{ secrets.GITHUB_TOKEN }}
