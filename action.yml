@@ -57,6 +57,10 @@ runs:
       id: run-bot
       shell: bash
       run: |
+        if command -v rustup &> /dev/null; then
+          rustup default stable
+        fi
+
         ARGS=()
         ARGS+=(--base "${{ inputs.base }}")
         ARGS+=(--head "${{ inputs.head }}")
