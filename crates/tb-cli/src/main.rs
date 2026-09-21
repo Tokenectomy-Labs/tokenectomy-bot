@@ -10,6 +10,7 @@ use clap::{Args, Parser, Subcommand, ValueEnum};
 use colored::*;
 
 mod benchmark;
+mod demo;
 mod ledger_cmd;
 mod mcp;
 mod rules_cmd;
@@ -39,6 +40,9 @@ struct Cli {
 enum Commands {
     /// Review a PR diff or git revision range
     Review(Box<ReviewArgs>),
+
+    /// Run live adversarial demo catching AI coding agent cheating tricks in < 1ms
+    Demo,
 
     /// Initialize default tokenectomy.json configuration
     Init {
@@ -282,6 +286,12 @@ fn main() {
     let cli = Cli::parse();
 
     match cli.command {
+        Commands::Demo => {
+            if let Err(e) = demo::run_demo() {
+                eprintln!("{}: {:#}", "Demo Error".red().bold(), e);
+                process::exit(1);
+            }
+        }
         Commands::Init { output } => {
             if let Err(e) = run_init(&output) {
                 eprintln!("{}: {}", "Error".red().bold(), e);

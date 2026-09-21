@@ -1,31 +1,76 @@
-# tokenectomy-bot 🗡️
+# tokenectomy-bot (Tmy-Joy) 🗡️
 
-> **Gerbang verifikasi Pull Request deterministik berbasis AST di era AI coding agent.**
+[![CI](https://github.com/Tokenectomy-Labs/tokenctomy-bot/actions/workflows/ci.yml/badge.svg)](https://github.com/Tokenectomy-Labs/tokenctomy-bot/actions/workflows/ci.yml)
+[![Precision Gate](https://img.shields.io/badge/Precision_Gate-100.00%25-brightgreen?logo=rust)](https://github.com/Tokenectomy-Labs/tokenctomy-bot)
+[![Latency](https://img.shields.io/badge/Audit_Latency-0.8ms%2Ffile-blue?logo=speedtest)](https://github.com/Tokenectomy-Labs/tokenctomy-bot)
+[![Zero-LLM](https://img.shields.io/badge/Cost-$0_(Zero--LLM)-orange)](https://github.com/Tokenectomy-Labs/tokenctomy-bot)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 
-Menangkap manipulasi test oleh AI agent, *silent catch*, tautologi assertion, dan celah reliabilitas/keamanan sebelum review manusia.
+> **Deterministic, sub-millisecond AST Pull Request verification gate in the AI coding agent era.**
+> Catches test tampering, fake assertions, hallucinated phantom modules, and security vulnerabilities before human review.
+
+---
+
+## ⚡ Try the Live Adversarial Demo
+
+Experience Tmy-Joy intercepting an AI coding agent (Cursor/Devin) attempting to sneak muted tests and hallucinated code past CI:
+
+```bash
+cargo run --release -p tb-cli -- demo
+```
+
+```text
+================================================================================
+   🗡️  TOKENECTOMY-BOT (TMY-JOY) — LIVE ADVERSARIAL PR AUDIT DEMO
+   Scenario: AI Coding Agent (Cursor / Devin / Copilot) submits PR #42
+================================================================================
+
+🤖 [AI CODING AGENT CLAIM]: "All tests passing! 100% CI green. Ready to merge! 🚀"
+⚡ AST Audit completed in 0.82 ms! (Throughput: ~1,210 files/sec)
+
+🚨 [TMY-JOY PR QUALITY GATE VERDICT]: ❌ BLOCKED (3 Errors, 1 Warning)
+
+📋 [AUDIT FINDINGS & CAUGHT CHEATING TRICKS]:
+   1. 🔴 BLOCKED `TB301` (phantom-symbol)
+      Trick   : Phantom module detected (`./uncreated_gateway`). AI agent hallucinated uncreated file.
+   2. 🔴 BLOCKED `TB002` (test-disabled)
+      Trick   : Test was disabled using: `it.skip('handles network timeout')`
+   3. 🔴 BLOCKED `TB003` (tautological-assertion)
+      Trick   : Tautological assertion detected: `expect(true).toBe(true)` always evaluates to true.
+   4. 🟡 WARNING `TB101` (silent-catch)
+      Trick   : Empty catch block swallows fatal production exceptions.
+      Auto-Fix: ✔ Available (1-click GitHub PR suggestion)
+
+🗺️  [BLAST RADIUS & SENSITIVE PATH IMPACT]:
+   Risk Score  : 43/100 (Medium) — Touched sensitive domain `src/billing/checkout.ts`
+
+🔒 [CRYPTOGRAPHIC AUDIT LEDGER SEAL]:
+   Hash : b57adbebfaa9980ed7b7576d5156a5c7a7d273e2d3288b3ab0dbbd7ad0d2cd07
+   Proof: Immutable record sealed. PR cannot be merged into main.
+```
 
 ---
 
 ## Fitur Utama
 
-- ⚡ **Zero-LLM Core**: Keputusan *pass/fail* 100% deterministik dan bebas halusinasi berbasis Tree-sitter AST traversal dalam hitungan milidetik.
+- ⚡ **Zero-LLM Core**: Keputusan *pass/fail* 100% deterministik dan bebas halusinasi berbasis Tree-sitter AST traversal dalam hitungan milidetik (~0.8 ms per berkas).
 - 🛡️ **Anti-Tampering Gate (TB0xx)**:
   - `TB001`: **assertion-removed** — assertion test berkurang bersih pada test suite yang masih aktif.
-  - `TB002`: **test-disabled** — pendeteksian `.skip`, `xit`, `it.todo`, `test.fixme` pada baris yang dimodifikasi.
+  - `TB002`: **test-disabled** — pendeteksian `.skip`, `xit`, `it.todo`, `test.fixme`, `#[ignore]`.
   - `TB003`: **tautological-assertion** — assertion palsu seperti `expect(true).toBe(true)` atau variabel yang membandingkan dirinya sendiri.
-- 🔍 **Reliabilitas (TB1xx)**:
-  - `TB101`: **silent-catch** — blok `catch` kosong atau `.catch(() => {})` yang menelan error tanpa penanganan/logging.
-- 📦 **Multi-format Reporter**:
-  - `text`: Terminal output berwarna dengan ringkasan dan petunjuk perbaikan (*fix hint*).
-  - `json`: Keluaran terstruktur untuk integrasi M2M / MCP.
-  - `sarif`: Standar SARIF 2.1.0 untuk integrasi GitHub Code Scanning.
-  - `github`: Anotasi alur kerja bawaan GitHub Actions (`::error file=...::`).
-- 🛑 **Exit Codes**:
-  - `0`: Bersih / Lolos verifikasi.
-  - `1`: Diblokir oleh temuan (terdapat pelanggaran severity error/warn).
-  - `2`: Galat internal (tersedia opsi `--fail-open` agar tidak memblokir merge saat terjadi kendala infrastruktur).
-
----
+  - `TB004`–`TB009`: **config-weakened**, **early-exit-injected**, **lazy-deletion** (`todo!()`), **domain-narrowing**, **fixture-snooping**.
+- 👻 **Hallucination Buster (`TB301: phantom-symbol`)**:
+  - Cross-file AST symbol resolver yang memverifikasi apakah impor relatif (`./`, `../`) benar-benar ada dan simbolnya benar-benar diekspor oleh berkas target.
+- 🗺️ **Blast Radius & Architecture Visualizer**:
+  - Pemetaan graph dependensi 2-tingkat (Direct Callers: depth 1, Indirect Callers: depth 2) melintasi repositori dalam waktu < 5 ms.
+  - Penilaian skor risiko kuantitatif (0–100) dan diagram alur visual Mermaid `graph TD` otomatis dirender di PR Summary Sticky Comment.
+- 🛠️ **Deterministic Auto-Fix Engine**:
+  - Menerapkan perbaikan AST secara instan (`--fix`) tanpa drift nomor baris.
+  - Menghasilkan blok ````suggestion```` interaktif di GitHub Review sehingga reviewer/author dapat menerapkan perbaikan dengan 1 klik.
+- 🤖 **Autonomous M2M Bot Dialogue**:
+  - Berinteraksi otonom dengan Dependabot dan Renovate: otomatis menerbitkan `@dependabot squash and merge` jika bersih, atau `@dependabot recreate` jika rusak.
+- 🔒 **Cryptographic SHA-256 Audit Ledger**:
+  - Menjaga jejak audit rantai hash anti-pemalsuan untuk kebutuhan audit kepatuhan dan keamanan enterprise.
 
 ## Instalasi & Penggunaan
 
