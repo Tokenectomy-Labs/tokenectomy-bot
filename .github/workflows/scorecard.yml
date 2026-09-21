@@ -1,19 +1,21 @@
 name: OpenSSF Scorecard Monitor
 
 on:
-  branch_protection_rule:
   schedule:
     - cron: '30 1 * * 1'
   push:
     branches: [main]
 
-permissions: read-all
+permissions:
+  contents: read
 
 jobs:
   analysis:
     name: Scorecard security analysis
     runs-on: ubuntu-latest
     permissions:
+      contents: read
+      actions: read
       security-events: write
       id-token: write
 
