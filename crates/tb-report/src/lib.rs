@@ -1,4 +1,5 @@
 pub mod check_run;
+pub mod conversation;
 pub mod github;
 pub mod json;
 pub mod ledger;
@@ -10,6 +11,7 @@ pub mod text;
 pub mod webhook;
 
 pub use check_run::{CheckAnnotation, CheckRunBatcher, MAX_GITHUB_ANNOTATIONS_PER_BATCH};
+pub use conversation::{BotKind, CommandKind, ConversationEngine, GateStatus, SenderKind};
 pub use github::GitHubAnnotationReporter;
 pub use json::JsonReporter;
 pub use ledger::{AuditLedger, GENESIS_SEAL, LedgerEntry, LedgerMetrics, LedgerVerificationResult};

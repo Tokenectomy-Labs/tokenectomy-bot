@@ -442,3 +442,49 @@ fn test_cli_org_policy_enforcement() {
 
     assert_eq!(output_allowed.status.code(), Some(0));
 }
+
+#[test]
+fn test_cli_chat_m2m_and_conversational_reply() {
+    let bin = env!("CARGO_BIN_EXE_tokenectomy-bot");
+
+    // 1. M2M test with dependabot passed
+    let output_dep = Command::new(bin)
+        .args([
+            "chat",
+            "--author",
+            "dependabot[bot]",
+            "--comment",
+            "Bumps axios from 1.0 to 1.2",
+            "--gate-status",
+            "passed",
+        ])
+        .output()
+        .expect("execute");
+
+    assert!(output_dep.status.success());
+    let stdout_dep = String::from_utf8_lossy(&output_dep.stdout);
+    assert!(stdout_dep.contains("@dependabot squash and merge"));
+    assert!(stdout_dep.contains("M2M Protocol v1"));
+
+    // 2. Human query with /explain TB101
+    let output_explain = Command::new(bin)
+        .args(["chat", "--author", "octocat", "--comment", "/explain TB101"])
+        .output()
+        .expect("execute");
+
+    assert!(output_explain.status.success());
+    let stdout_explain = String::from_utf8_lossy(&output_explain.stdout);
+    assert!(stdout_explain.contains("silent-catch"));
+    assert!(stdout_explain.contains("TB101"));
+
+    // 3. Human query with /rules catalog
+    let output_rules = Command::new(bin)
+        .args(["chat", "--author", "octocat", "--comment", "/rules"])
+        .output()
+        .expect("execute");
+
+    assert!(output_rules.status.success());
+    let stdout_rules = String::from_utf8_lossy(&output_rules.stdout);
+    assert!(stdout_rules.contains("Tmy-Joy Deterministic Rules Catalog"));
+    assert!(stdout_rules.contains("TB001"));
+}

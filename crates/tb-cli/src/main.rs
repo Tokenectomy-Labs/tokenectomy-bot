@@ -17,8 +17,9 @@ mod server;
 
 use tb_diff::{DiffParser, GitExtractor};
 use tb_report::{
-    AuditLedger, FailOn, GatePolicy, GitHubAnnotationReporter, JsonReporter, ReviewBatchGenerator,
-    SarifReporter, StickySummaryReporter, TextReporter, WebhookNotification, WebhookType,
+    AuditLedger, ConversationEngine, FailOn, GatePolicy, GateStatus, GitHubAnnotationReporter,
+    JsonReporter, ReviewBatchGenerator, SarifReporter, StickySummaryReporter, TextReporter,
+    WebhookNotification, WebhookType,
 };
 use tb_rules::{Config, CustomRule, RuleEngine};
 
@@ -62,6 +63,9 @@ enum Commands {
     /// Manage and verify SHA-256 sealed audit ledger
     #[command(subcommand)]
     Ledger(LedgerCommands),
+
+    /// Converse or respond to PR comments and GitHub bots (M2M)
+    Chat(ChatArgs),
 
     /// Start autonomous GitHub App Webhook server
     Serve(ServeArgs),
@@ -243,6 +247,33 @@ pub struct ReviewArgs {
     step_summary: bool,
 }
 
+#[derive(Args, Debug)]
+pub struct ChatArgs {
+    /// GitHub login of the commenter or bot
+    #[arg(short, long)]
+    pub author: String,
+
+    /// Text content of the comment or question
+    #[arg(short, long)]
+    pub comment: String,
+
+    /// Pull Request number
+    #[arg(short, long, default_value_t = 0)]
+    pub pr: u64,
+
+    /// Target repository (e.g. owner/repo)
+    #[arg(short, long, default_value = "repo")]
+    pub repo: String,
+
+    /// Optional path to sticky summary markdown to infer gate status
+    #[arg(long)]
+    pub summary_file: Option<PathBuf>,
+
+    /// Override gate status (passed, blocked, warning, unknown)
+    #[arg(long)]
+    pub gate_status: Option<String>,
+}
+
 fn main() {
     let cli = Cli::parse();
 
@@ -303,6 +334,12 @@ fn main() {
             let srv = server::WebhookServer::new(server_cfg);
             if let Err(e) = srv.run() {
                 eprintln!("{}: {:#}", "Webhook Server Error".red().bold(), e);
+                process::exit(1);
+            }
+        }
+        Commands::Chat(args) => {
+            if let Err(e) = run_chat(&args) {
+                eprintln!("{}: {:#}", "Chat Error".red().bold(), e);
                 process::exit(1);
             }
         }
@@ -660,4 +697,58 @@ fn run_review(args: ReviewArgs) -> Result<i32> {
     }
 
     Ok(exit_code)
+}
+
+fn run_chat(args: &ChatArgs) -> Result<()> {
+    let sender = ConversationEngine::parse_sender(&args.author);
+
+    let gate_status = if let Some(ref gs) = args.gate_status {
+        match gs.to_lowercase().as_str() {
+            "passed" => GateStatus::Passed,
+            "blocked" => GateStatus::Blocked {
+                errors: 1,
+                warnings: 0,
+                rules_triggered: vec!["TB_GATE".to_string()],
+            },
+            "warn" | "warning" => GateStatus::Warning {
+                warnings: 1,
+                rules_triggered: vec!["TB_WARN".to_string()],
+            },
+            _ => GateStatus::Unknown,
+        }
+    } else if let Some(ref path) = args.summary_file {
+        if let Ok(content) = fs::read_to_string(path) {
+            if content.contains("PASSED") {
+                GateStatus::Passed
+            } else if content.contains("BLOCKED") {
+                GateStatus::Blocked {
+                    errors: 1,
+                    warnings: 0,
+                    rules_triggered: vec![],
+                }
+            } else if content.contains("WARNING") {
+                GateStatus::Warning {
+                    warnings: 1,
+                    rules_triggered: vec![],
+                }
+            } else {
+                GateStatus::Unknown
+            }
+        } else {
+            GateStatus::Unknown
+        }
+    } else {
+        GateStatus::Unknown
+    };
+
+    let reply = ConversationEngine::generate_response(
+        &sender,
+        &args.comment,
+        &gate_status,
+        &args.repo,
+        args.pr,
+    );
+
+    println!("{}", reply);
+    Ok(())
 }

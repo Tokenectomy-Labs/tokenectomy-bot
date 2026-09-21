@@ -1,0 +1,48 @@
+name: Tmy-Joy PR Conversation & M2M Dialogue
+
+on:
+  issue_comment:
+    types: [created]
+  pull_request_review_comment:
+    types: [created]
+
+permissions:
+  contents: read
+  pull-requests: write
+  issues: write
+
+jobs:
+  conversation:
+    name: Reply to PR Comment / Bot Handover
+    # Trigger if it's a pull request comment AND either:
+    # 1. Author is a human mentioning the bot or using slash commands
+    # 2. Author is a supported bot (Dependabot, Renovate, CodeRabbit)
+    if: |
+      (github.event.issue.pull_request != null || github.event.pull_request != null) &&
+      (
+        !endsWith(github.event.comment.user.login, '[bot]') ||
+        github.event.comment.user.login == 'dependabot[bot]' ||
+        github.event.comment.user.login == 'renovate[bot]' ||
+        github.event.comment.user.login == 'coderabbitai[bot]'
+      )
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Install Rust toolchain
+        uses: dtolnay/rust-toolchain@stable
+
+      - name: Build Tmy-Joy Binary
+        run: cargo build --release -p tb-cli
+
+      - name: Execute Autonomous PR Conversation Engine
+        shell: bash
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          PR_COMMENT_BODY: ${{ github.event.comment.body }}
+          PR_COMMENT_AUTHOR: ${{ github.event.comment.user.login }}
+          PR_NUMBER: ${{ github.event.issue.number || github.event.pull_request.number }}
+          GITHUB_REPOSITORY: ${{ github.repository }}
+        run: |
+          python3 scripts/bot_chat.py

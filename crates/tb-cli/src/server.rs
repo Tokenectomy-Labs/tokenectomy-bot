@@ -9,7 +9,7 @@ use anyhow::{Context, Result};
 use colored::*;
 use serde::{Deserialize, Serialize};
 use sha2::{Digest, Sha256};
-use tb_report::AuditLedger;
+use tb_report::{AuditLedger, ConversationEngine, GateStatus};
 use tb_rules::RuleEngine;
 
 /// Verify GitHub X-Hub-Signature-256 HMAC
@@ -366,6 +366,95 @@ impl WebhookServer {
             }));
         }
 
+        if event == "issue_comment" || event == "pull_request_review_comment" {
+            let action = payload
+                .get("action")
+                .and_then(|a| a.as_str())
+                .unwrap_or("unknown");
+
+            if action != "created" {
+                return Ok(serde_json::json!({
+                    "status": "ignored",
+                    "action": action,
+                    "message": "Only created comment actions are evaluated"
+                }));
+            }
+
+            let is_pr = payload
+                .get("issue")
+                .and_then(|i| i.get("pull_request"))
+                .is_some()
+                || event == "pull_request_review_comment";
+
+            if !is_pr {
+                return Ok(serde_json::json!({
+                    "status": "ignored",
+                    "message": "Comment is not associated with a Pull Request"
+                }));
+            }
+
+            let comment_body = payload
+                .get("comment")
+                .and_then(|c| c.get("body"))
+                .and_then(|b| b.as_str())
+                .unwrap_or("");
+
+            let author_login = payload
+                .get("comment")
+                .and_then(|c| c.get("user"))
+                .and_then(|u| u.get("login"))
+                .and_then(|l| l.as_str())
+                .unwrap_or("anonymous");
+
+            let pr_number = if event == "pull_request_review_comment" {
+                payload
+                    .get("pull_request")
+                    .and_then(|pr| pr.get("number"))
+                    .and_then(|n| n.as_u64())
+                    .unwrap_or(0)
+            } else {
+                payload
+                    .get("issue")
+                    .and_then(|i| i.get("number"))
+                    .and_then(|n| n.as_u64())
+                    .unwrap_or(0)
+            };
+
+            let repo_full_name = payload
+                .get("repository")
+                .and_then(|r| r.get("full_name"))
+                .and_then(|n| n.as_str())
+                .unwrap_or("unknown/repo");
+
+            let sender = ConversationEngine::parse_sender(author_login);
+
+            if !ConversationEngine::should_respond(&sender, comment_body) {
+                return Ok(serde_json::json!({
+                    "status": "ignored",
+                    "author": author_login,
+                    "message": "Comment does not trigger Tmy-Joy response"
+                }));
+            }
+
+            let gate_status = GateStatus::Passed;
+            let response_text = ConversationEngine::generate_response(
+                &sender,
+                comment_body,
+                &gate_status,
+                repo_full_name,
+                pr_number,
+            );
+
+            return Ok(serde_json::json!({
+                "status": "replied",
+                "repository": repo_full_name,
+                "pr_number": pr_number,
+                "author": author_login,
+                "is_bot": sender.is_bot(),
+                "response": response_text,
+            }));
+        }
+
         Ok(serde_json::json!({
             "status": "ignored",
             "event": event,
@@ -513,6 +602,34 @@ mod tests {
             let mut reader = BufReader::new(stream);
             reader.read_line(&mut res).unwrap();
             assert!(res.contains("401 Unauthorized"));
+        }
+
+        // 4. Test POST /webhook with issue_comment from dependabot (M2M Handover)
+        {
+            let comment_payload = serde_json::json!({
+                "action": "created",
+                "issue": { "number": 42, "pull_request": {} },
+                "comment": {
+                    "body": "Bumps tokio from 1.0 to 1.1",
+                    "user": { "login": "dependabot[bot]" }
+                },
+                "repository": { "full_name": "Acme/Web" }
+            });
+            let payload_str = serde_json::to_string(&comment_payload).unwrap();
+            let hmac = compute_hmac_sha256(secret.as_bytes(), payload_str.as_bytes());
+
+            let mut stream = TcpStream::connect(format!("127.0.0.1:{}", port)).unwrap();
+            let req = format!(
+                "POST /webhook HTTP/1.1\r\nHost: localhost\r\nContent-Length: {}\r\nX-Hub-Signature-256: sha256={}\r\nX-GitHub-Event: issue_comment\r\n\r\n{}",
+                payload_str.len(),
+                hmac,
+                payload_str
+            );
+            stream.write_all(req.as_bytes()).unwrap();
+            let mut res = String::new();
+            let mut reader = BufReader::new(stream);
+            reader.read_line(&mut res).unwrap();
+            assert!(res.contains("200 OK"));
         }
 
         server.stop();

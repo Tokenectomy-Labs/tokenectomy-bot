@@ -106,6 +106,25 @@ tokenectomy-bot review --base origin/main --webhook-url "https://hooks.slack.com
 ```
 Supports Slack, Discord, and Microsoft Teams.
 
+### Autonomous PR Discussion & M2M Bot-to-Bot Dialogue (Tmy-Joy)
+Tmy-Joy interacts directly in GitHub PR discussions, conversational threads, and machine-to-machine handshakes with other GitHub bots:
+```bash
+# Answer PR comments or questions locally or via GitHub Actions
+tokenectomy-bot chat --author "dependabot[bot]" --comment "Bumps lodash" --gate-status passed
+tokenectomy-bot chat --author "alice" --comment "/explain TB001"
+```
+
+#### Supported Bot Commands & Queries
+- `@tmy-joy status` or `/status`: Returns live deterministic gate status, error count, and ledger proof.
+- `@tmy-joy explain <RULE_ID>`: Provides detailed rule rationale, security risks, good/bad code examples, and remediation steps.
+- `@tmy-joy rules` or `/rules`: Displays full active AST detection rules catalog.
+- `@tmy-joy ping`: Health check, response latency, and Tree-sitter engine status.
+
+#### Machine-to-Machine (M2M) Handover Protocol
+- **Dependabot (`@dependabot`)**: Evaluates AST integrity. If passed, autonomously issues `@dependabot squash and merge`. If blocked by test tampering or security flaws, issues `@dependabot recreate`.
+- **Renovate (`@renovate`)**: Issues `@renovate merge` on pass or `@renovate rebase` on block.
+- **CodeRabbit (`@coderabbitai`)**: Correlates AI suggestions with Tree-sitter AST determinism (0% hallucination rate).
+
 ### Mekanisme Penekanan (Suppression)
 Gunakan komentar inline jika blok sengaja dilewati secara sah:
 ```typescript
