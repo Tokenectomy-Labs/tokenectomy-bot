@@ -8,8 +8,9 @@ use crate::model::{Finding, RuleContext, Severity};
 use crate::rules::{
     Tb001AssertionRemoved, Tb002TestDisabled, Tb003TautologicalAssertion, Tb004ConfigWeakened,
     Tb005EarlyExitInjected, Tb006TestDeleted, Tb007LazyDeletion, Tb008DomainNarrowing,
-    Tb009FixtureSnooping, Tb101SilentCatch, Tb102UnboundedQuery, Tb104AsyncForeach,
-    Tb201DynamicEval, Tb202ShellInjection, Tb203RawSqlInterpolation,
+    Tb009FixtureSnooping, Tb101SilentCatch, Tb102UnboundedQuery, Tb103FloatingPromise,
+    Tb104AsyncForeach, Tb105AwaitInLoop, Tb201DynamicEval, Tb202ShellInjection,
+    Tb203RawSqlInterpolation,
 };
 use crate::traits::Rule;
 
@@ -40,7 +41,9 @@ impl RuleEngine {
             Box::new(Tb009FixtureSnooping),
             Box::new(Tb101SilentCatch),
             Box::new(Tb102UnboundedQuery),
+            Box::new(Tb103FloatingPromise),
             Box::new(Tb104AsyncForeach),
+            Box::new(Tb105AwaitInLoop),
             Box::new(Tb201DynamicEval),
             Box::new(Tb202ShellInjection),
             Box::new(Tb203RawSqlInterpolation),

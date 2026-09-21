@@ -84,13 +84,57 @@ impl FileDiff {
     pub fn changed_line_ranges_new(&self) -> Vec<(usize, usize)> {
         let mut ranges = Vec::new();
         for hunk in &self.hunks {
-            if hunk.new_lines > 0 {
-                let start = hunk.new_start;
-                let end = hunk.new_start + hunk.new_lines - 1;
-                ranges.push((start, end));
-            } else if hunk.old_lines > 0 {
-                // Pure deletion in old side maps to point in new side
-                ranges.push((hunk.new_start, hunk.new_start));
+            if hunk.lines.is_empty() {
+                if hunk.new_lines > 0 {
+                    let start = hunk.new_start;
+                    let end = hunk.new_start + hunk.new_lines - 1;
+                    ranges.push((start, end));
+                } else if hunk.old_lines > 0 {
+                    // Pure deletion in old side maps to point in new side
+                    ranges.push((hunk.new_start, hunk.new_start));
+                }
+                continue;
+            }
+
+            let mut changed_lines = std::collections::BTreeSet::new();
+            let mut curr_new = hunk.new_start;
+            for line in &hunk.lines {
+                match line.kind {
+                    LineKind::Added => {
+                        let lineno = line.new_lineno.unwrap_or(curr_new);
+                        changed_lines.insert(lineno);
+                        curr_new = lineno + 1;
+                    }
+                    LineKind::Deleted => {
+                        changed_lines.insert(curr_new);
+                    }
+                    LineKind::Context => {
+                        if let Some(lineno) = line.new_lineno {
+                            curr_new = lineno + 1;
+                        } else {
+                            curr_new += 1;
+                        }
+                    }
+                }
+            }
+
+            let mut current_range: Option<(usize, usize)> = None;
+            for line in changed_lines {
+                match current_range {
+                    Some((start, end)) if line == end + 1 => {
+                        current_range = Some((start, line));
+                    }
+                    Some(range) => {
+                        ranges.push(range);
+                        current_range = Some((line, line));
+                    }
+                    None => {
+                        current_range = Some((line, line));
+                    }
+                }
+            }
+            if let Some(range) = current_range {
+                ranges.push(range);
             }
         }
         ranges
@@ -99,13 +143,57 @@ impl FileDiff {
     pub fn changed_line_ranges_old(&self) -> Vec<(usize, usize)> {
         let mut ranges = Vec::new();
         for hunk in &self.hunks {
-            if hunk.old_lines > 0 {
-                let start = hunk.old_start;
-                let end = hunk.old_start + hunk.old_lines - 1;
-                ranges.push((start, end));
-            } else if hunk.new_lines > 0 {
-                // Pure addition in new side maps to point in old side
-                ranges.push((hunk.old_start, hunk.old_start));
+            if hunk.lines.is_empty() {
+                if hunk.old_lines > 0 {
+                    let start = hunk.old_start;
+                    let end = hunk.old_start + hunk.old_lines - 1;
+                    ranges.push((start, end));
+                } else if hunk.new_lines > 0 {
+                    // Pure addition in new side maps to point in old side
+                    ranges.push((hunk.old_start, hunk.old_start));
+                }
+                continue;
+            }
+
+            let mut changed_lines = std::collections::BTreeSet::new();
+            let mut curr_old = hunk.old_start;
+            for line in &hunk.lines {
+                match line.kind {
+                    LineKind::Deleted => {
+                        let lineno = line.old_lineno.unwrap_or(curr_old);
+                        changed_lines.insert(lineno);
+                        curr_old = lineno + 1;
+                    }
+                    LineKind::Added => {
+                        changed_lines.insert(curr_old);
+                    }
+                    LineKind::Context => {
+                        if let Some(lineno) = line.old_lineno {
+                            curr_old = lineno + 1;
+                        } else {
+                            curr_old += 1;
+                        }
+                    }
+                }
+            }
+
+            let mut current_range: Option<(usize, usize)> = None;
+            for line in changed_lines {
+                match current_range {
+                    Some((start, end)) if line == end + 1 => {
+                        current_range = Some((start, line));
+                    }
+                    Some(range) => {
+                        ranges.push(range);
+                        current_range = Some((line, line));
+                    }
+                    None => {
+                        current_range = Some((line, line));
+                    }
+                }
+            }
+            if let Some(range) = current_range {
+                ranges.push(range);
             }
         }
         ranges

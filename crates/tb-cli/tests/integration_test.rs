@@ -27,8 +27,7 @@ fn test_cli_init_command() {
 fn test_cli_review_diff_file_with_findings() {
     let dir = tempdir().unwrap();
     let test_file = dir.path().join("auth.test.ts");
-    let test_content = r#"
-describe.skip("Authentication Service", () => {
+    let test_content = r#"describe.skip("Authentication Service", () => {
   it("verifies credentials correctly", () => {
     expect(true).toBe(true);
   });

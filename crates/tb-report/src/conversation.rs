@@ -580,6 +580,15 @@ impl ConversationEngine {
                 - **Fix**: Add `.take(limit)` or `.limit(N)`."
                     .to_string()
             }
+            "TB103" => {
+                "### 📖 Rule TB103: `floating-promise`\n\n\
+                - **Category**: Reliability\n\
+                - **Default Severity**: `error`\n\
+                - **Description**: Calling an asynchronous function or promise without `await`, `void`, `return`, or `.catch()`, causing unhandled promise rejections.\n\
+                - **Why Dangerous**: Unhandled rejections silently fail background tasks, leak resources, or terminate Node/Rust processes.\n\
+                - **Fix**: Prepend `await`, return the promise, use `void`, or attach a `.catch(...)` error handler."
+                    .to_string()
+            }
             "TB104" => {
                 "### 📖 Rule TB104: `async-foreach`\n\n\
                 - **Category**: Reliability\n\
@@ -587,6 +596,15 @@ impl ConversationEngine {
                 - **Description**: `arr.forEach(async () => ...)` where async promises are discarded unawaited.\n\
                 - **Why Dangerous**: Causes race conditions and unhandled promise failures.\n\
                 - **Fix**: Use `for (const item of arr)` or `await Promise.all(arr.map(async ...))`."
+                    .to_string()
+            }
+            "TB105" => {
+                "### 📖 Rule TB105: `await-in-loop`\n\n\
+                - **Category**: Reliability & Performance\n\
+                - **Default Severity**: `warn`\n\
+                - **Description**: Awaiting database queries or HTTP network requests inside a loop (`for`, `while`), leading to serial execution (N+1 query pattern).\n\
+                - **Why Dangerous**: Degrades system throughput and latency exponentially with loop size.\n\
+                - **Fix**: Collect promises and use `Promise.all(items.map(...))` or use a batch database query."
                     .to_string()
             }
             "TB201" => {
@@ -618,7 +636,7 @@ impl ConversationEngine {
             }
             _ => {
                 format!(
-                    "❓ Unknown rule `{}`. Active rules: `TB001`-`TB006`, `TB009`, `TB101`-`TB104`, `TB201`-`TB203`. Type `@tmy-joy rules` to see all.",
+                    "❓ Unknown rule `{}`. Active rules: `TB001`-`TB009`, `TB101`-`TB105`, `TB201`-`TB203`. Type `@tmy-joy rules` to see all.",
                     rule_id
                 )
             }
@@ -641,7 +659,9 @@ impl ConversationEngine {
         | `TB009` | `fixture-snooping` | Verification Integrity | Error |\n\
         | `TB101` | `silent-catch` | Reliability | Error |\n\
         | `TB102` | `unbounded-query` | Reliability | Warn |\n\
+        | `TB103` | `floating-promise` | Reliability | Error |\n\
         | `TB104` | `async-foreach` | Reliability | Error |\n\
+        | `TB105` | `await-in-loop` | Reliability & Performance | Warn |\n\
         | `TB201` | `dynamic-eval` | Security | Error |\n\
         | `TB202` | `shell-injection` | Security | Error |\n\
         | `TB203` | `raw-sql-interpolation` | Security | Error |\n\n\

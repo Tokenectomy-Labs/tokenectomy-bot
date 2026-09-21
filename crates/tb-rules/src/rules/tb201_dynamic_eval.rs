@@ -91,11 +91,10 @@ mod tests {
 
     #[test]
     fn test_tb201_detects_eval() {
-        let code = r#"
-            function runUserScript(script: string) {
-                return eval(script);
-            }
-        "#
+        let code = r#"function runUserScript(script: string) {
+    return eval(script);
+}
+"#
         .to_string();
 
         let parsed = ParsedSource::parse(&PathBuf::from("script.ts"), code).unwrap();

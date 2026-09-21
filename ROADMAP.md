@@ -31,33 +31,33 @@ Roadmap dibagi menjadi tahap berurutan, tetapi pekerjaan dijalankan dalam empat 
 
 **Tujuan:** pipeline penuh berjalan di repo Tokenectomy sendiri (dogfooding), meski baru dengan satu rule. Semua tahap berikutnya hanya menambah isi ke pipa yang sudah hidup.
 
-- [ ] **Workspace Rust & CI**
+- [x] **Workspace Rust & CI**
   - Cargo workspace dengan crate terpisah: `tb-diff`, `tb-parse`, `tb-rules`, `tb-report`, `tb-cli`.
   - CI build + test di Linux/macOS/Windows; `clippy` dan `rustfmt` wajib lulus.
-- [ ] **Git Diff Extractor (dua sisi)**
+- [x] **Git Diff Extractor (dua sisi)**
   - Ambil hunk dari `git diff -U0 --no-color --find-renames <merge-base>...<head>` (three-dot, bukan two-dot).
   - Simpan **baris ditambah dan baris dihapus** beserta rentang lama dan baru. Aturan anti-tampering butuh sisi lama.
   - Tangani: rename, file dihapus, file biner, perubahan mode, CRLF, encoding non-UTF-8, path dengan spasi/unicode.
-- [ ] **Klasifikasi & Filter Berkas**
+- [x] **Klasifikasi & Filter Berkas**
   - Kelas: `source`, `test`, `config`, `ci`, `generated`, `ignored`.
   - Abaikan: lockfile, `dist/`, `build/`, `vendor/`, `node_modules/`, `*.min.js`, hasil generate.
   - **Berkas test tidak dibuang.** Ia diklasifikasikan sebagai `test` dan hanya dipindai oleh rule integritas (TB0xx), bukan rule kualitas kode biasa.
-- [ ] **Tree-sitter Parsing (sisi lama & baru)**
+- [x] **Tree-sitter Parsing (sisi lama & baru)**
   - Grammar awal: TypeScript, TSX, JavaScript, JSX.
   - Parse blob lama (`git show base:path`) dan baru; toleran terhadap error sintaks (partial tree, jangan panik).
-- [ ] **Range Mapping (semantik overlap)**
+- [x] **Range Mapping (semantik overlap)**
   - Node dilaporkan jika rentangnya **beririsan** dengan rentang yang berubah, bukan hanya jika seluruhnya berada di dalam baris tambahan. Ini menangkap bug akibat penghapusan (misal hilangnya `await` atau `limit`) yang membuat kode lama yang tak disentuh ikut salah.
   - Rule dapat menyatakan `needs_old_side: true` untuk membandingkan pohon lama vs baru.
-- [ ] **Model Finding & Fingerprint**
+- [x] **Model Finding & Fingerprint**
   - Field: `rule_id`, `severity`, `confidence`, `file`, `start/end line`, `message`, `fix_hint`, `fingerprint`.
   - `fingerprint` stabil terhadap pergeseran nomor baris (hash dari rule + struktur node + konteks), dipakai untuk dedupe, baseline, dan pelacakan komentar.
-- [ ] **Reporter Dasar**
+- [x] **Reporter Dasar**
   - Keluaran JSON, SARIF 2.1.0, dan GitHub workflow annotations (`::warning file=,line=::`).
   - Kebijakan exit code terpisah: `0` bersih/peringatan, `1` diblokir oleh temuan, `2` galat internal alat.
-- [ ] **Action Wrapper Minimal**
+- [x] **Action Wrapper Minimal**
   - Composite action yang mengunduh binary rilis (terverifikasi checksum) dan menjalankannya pada PR.
   - Dipasang di repo Tokenectomy sendiri sejak hari pertama.
-- [ ] **Harness Uji**
+- [x] **Harness Uji**
   - Fixture berbasis (diff masukan → temuan yang diharapkan) dengan snapshot test.
   - Fuzzing (`cargo-fuzz`) untuk parser diff dan pemetaan rentang: tidak boleh ada panic pada masukan apa pun.
 
@@ -86,34 +86,34 @@ Mendeteksi trik agent yang membuat CI hijau tanpa memperbaiki perilaku. Ini mela
 
 ### Rule 1: Reliabilitas
 
-- [ ] **TB101 `silent-catch`**
+- [x] **TB101 `silent-catch`**
   - Temukan: `catch` kosong atau hanya berisi komentar, `.catch(() => {})`, `.catch(noop)`; di Rust hanya `Err(_) => {}` (bukan `_ => {}` yang sering sah).
   - **Tidak** dilaporkan bila ada: log (nama logger bisa dikonfigurasi), `throw`/re-throw, `return`, atau penugasan yang jelas menangani galat.
-- [ ] **TB102 `unbounded-query`**
+- [x] **TB102 `unbounded-query`**
   - Deteksi klien ORM lewat **import** (Prisma, Drizzle, TypeORM, Sequelize, Mongoose, Knex), bukan sekadar nama method. `.all()` pada `Map` atau array tidak boleh terkena.
   - Laporkan `findMany()` tanpa `take`, `select().from()` tanpa `.limit()`, `find()` tanpa `take`/`limit`, dan sejenisnya.
   - Confidence bertingkat: `high` jika klien terbukti dari import, `low` jika hanya dari pola nama (tidak pernah memblokir).
-- [ ] **TB103 `floating-promise`**
+- [x] **TB103 `floating-promise`**
   - Tingkat (a): pemanggilan fungsi yang **terbukti async** dari deklarasi di berkas yang sama atau import satu lompatan di dalam repo.
   - Tingkat (b): API async yang dikenal (`fetch`, `fs.promises.*`, `Promise.*`).
   - Dikecualikan: `await`, `return`, `void`, `.catch()`, `.then(_, onRejected)`, argumen `Promise.all/allSettled/race`.
   - Mode berbasis tipe (memakai `tsc`) menjadi opsi terpisah, bukan syarat.
-- [ ] **TB104 `async-foreach`**: `arr.forEach(async ...)` yang hasilnya tidak ditunggu. Bug klasik dengan false positive sangat rendah.
-- [ ] **TB105 `await-in-loop`** (performa): `await` pada panggilan DB/HTTP yang terbukti (klien dari import) di dalam loop, yaitu pola N+1. Severity awal `warn`, confidence `high` hanya jika klien terbukti.
+- [x] **TB104 `async-foreach`**: `arr.forEach(async ...)` yang hasilnya tidak ditunggu. Bug klasik dengan false positive sangat rendah.
+- [x] **TB105 `await-in-loop`** (performa): `await` pada panggilan DB/HTTP yang terbukti (klien dari import) di dalam loop, yaitu pola N+1. Severity awal `warn`, confidence `high` hanya jika klien terbukti.
 
 ### Rule 2: Keamanan
 
-- [ ] **TB201 `dynamic-eval`**: `eval()`, `new Function()`, `setTimeout("string")`, `vm.runIn*Context`.
-- [ ] **TB202 `shell-injection`**: `exec`/`execSync` dengan string hasil interpolasi atau konkatenasi dari nilai non-literal.
-- [ ] **TB203 `raw-sql-interpolation`**: `$queryRawUnsafe`, `.query()` dengan template literal berisi variabel.
+- [x] **TB201 `dynamic-eval`**: `eval()`, `new Function()`, `setTimeout("string")`, `vm.runIn*Context`.
+- [x] **TB202 `shell-injection`**: `exec`/`execSync` dengan string hasil interpolasi atau konkatenasi dari nilai non-literal.
+- [x] **TB203 `raw-sql-interpolation`**: `$queryRawUnsafe`, `.query()` dengan template literal berisi variabel.
 
 ### Tata Kelola Kualitas Rule
 
-- [ ] **Siklus hidup rule:** `experimental` (tidak ditampilkan) → `warn` → `error`. Kenaikan status wajib melewati precision gate.
-- [ ] **Precision gate:** jalankan pada PR yang sudah di-merge dari ≥50 repo TypeScript populer, label manual sampel temuan, syarat **presisi ≥ 95%** untuk `error`.
-- [ ] **Benchmark yang bisa direproduksi:** `cargo test --release --test precision_benchmark`, hasil dipublikasikan di repo.
-- [ ] **Dokumen per rule:** kenapa berbahaya, contoh salah dan benar, cara memperbaiki, cara menekan temuan.
-- [ ] **Mekanisme penekanan:** komentar `// tokenectomy-ignore: TB101 -- alasan`, ignore per path, dan berkas baseline (`.tokenectomy-baseline.json`, berbasis fingerprint) supaya repo lama bisa mulai bersih dari hari pertama.
+- [x] **Siklus hidup rule:** `experimental` (tidak ditampilkan) → `warn` → `error`. Kenaikan status wajib melewati precision gate.
+- [x] **Precision gate:** jalankan pada PR yang sudah di-merge dari ≥50 repo TypeScript populer, label manual sampel temuan, syarat **presisi ≥ 95%** untuk `error`.
+- [x] **Benchmark yang bisa direproduksi:** `cargo test --release --test precision_benchmark`, hasil dipublikasikan di repo.
+- [x] **Dokumen per rule:** kenapa berbahaya, contoh salah dan benar, cara memperbaiki, cara menekan temuan.
+- [x] **Mekanisme penekanan:** komentar `// tokenectomy-ignore: TB101 -- alasan`, ignore per path, dan berkas baseline (`.tokenectomy-baseline.json`, berbasis fingerprint) supaya repo lama bisa mulai bersih dari hari pertama.
 
 **Kriteria selesai:** semua rule TB0xx dan TB1xx punya fixture positif dan negatif; presisi terukur dan terpublikasi; tidak ada rule berstatus `error` tanpa lulus gate.
 
@@ -121,27 +121,27 @@ Mendeteksi trik agent yang membuat CI hijau tanpa memperbaiki perilaku. Ini mela
 
 ## Tahap 3: Integrasi CI/CD & Pelaporan
 
-- [ ] **Distribusi Binary di Action**
+- [x] **Distribusi Binary di Action**
   - Rilis binary untuk linux x64/arm64, macOS, Windows; checksum SHA-256 diverifikasi saat diunduh; cache antar-run.
-- [ ] **Izin & Strategi PR dari Fork**
+- [x] **Izin & Strategi PR dari Fork**
   - Dokumentasikan `permissions: contents: read, pull-requests: write`.
   - `GITHUB_TOKEN` bersifat read-only pada PR dari fork, sehingga default jatuh ke **annotations + `$GITHUB_STEP_SUMMARY`**.
   - Pola opsional dua workflow: analisis di `pull_request` (tidak tepercaya) menghasilkan artifact, lalu workflow `workflow_run` yang memposting komentar. **Jangan pernah** checkout kode head dengan rahasia di `pull_request_target`.
-- [ ] **Inline Review Commenter**
+- [x] **Inline Review Commenter**
   - Komentar hanya pada baris yang ada di diff (sisi kanan), karena selain itu API mengembalikan 422; temuan di luar diff masuk ke ringkasan.
   - Kirim sebagai **satu review batch**, bukan komentar satu per satu, agar tidak membanjiri notifikasi.
   - Dedupe lewat penanda tersembunyi berisi fingerprint; komentar yang sudah usang setelah push baru ditandai selesai atau diminimalkan.
   - Blok `suggestion` GitHub untuk perbaikan yang aman dan mekanis.
-- [ ] **PR Summary Sticky Comment**
+- [x] **PR Summary Sticky Comment**
   - Satu komentar yang **di-update di tempat** setiap push (penanda tersembunyi), tidak menumpuk komentar baru.
   - Ketika temuan sudah nol, komentar berubah menjadi status bersih, bukan dibiarkan usang.
   - Isi: hitungan per rule dan severity, tabel temuan teratas, detail dilipat.
-- [ ] **Check Run & Annotations**
+- [x] **Check Run & Annotations**
   - Batch annotation 50 per panggilan API; ringkasan check run menampilkan status gerbang.
-- [ ] **Kebijakan Gerbang**
+- [x] **Kebijakan Gerbang**
   - `fail-on: error | warn | none`, override severity per rule, dan pemisahan galat alat (exit `2`).
   - `fail-open` secara default untuk galat internal (bot tidak boleh memblokir tim karena bug-nya sendiri); `fail-closed` opsional.
-- [ ] **Ketahanan pada PR Besar**
+- [x] **Ketahanan pada PR Besar**
   - Batas jumlah berkas dan ukuran per berkas, batas waktu, laporan terpotong yang jujur ("dipindai 480 dari 1.200 berkas").
 
 **Kriteria selesai:** PR dari fork dan non-fork sama-sama menghasilkan umpan balik yang berguna; push berulang tidak menghasilkan komentar duplikat; galat internal tidak pernah memblokir merge secara default.
