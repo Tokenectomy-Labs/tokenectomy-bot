@@ -6,14 +6,16 @@ on:
       - 'v*.*.*'
 
 permissions:
-  contents: write
-  id-token: write
-  attestations: write
+  contents: read
 
 jobs:
   build-release:
     name: Build & Package (${{ matrix.target }})
     runs-on: ${{ matrix.os }}
+    permissions:
+      contents: write
+      id-token: write
+      attestations: write
     strategy:
       matrix:
         include:
@@ -41,10 +43,10 @@ jobs:
 
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v4
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
 
       - name: Install Rust toolchain
-        uses: dtolnay/rust-toolchain@stable
+        uses: dtolnay/rust-toolchain@02cb101ec7c40f2c49e1d9714d64511d8e1b74de # master
         with:
           targets: ${{ matrix.target }}
 
@@ -72,12 +74,12 @@ jobs:
           fi
 
       - name: Attest Build Provenance
-        uses: actions/attest-build-provenance@v2
+        uses: actions/attest-build-provenance@c074443f1aee8d4aeeae555aebba7737a62ae517 # v2.2.3
         with:
           subject-path: ${{ matrix.archive_name }}
 
       - name: Upload Release Asset
-        uses: softprops/action-gh-release@v2
+        uses: softprops/action-gh-release@c062e08bd532815e2082a85e87e3ef29c3e6d191 # v2.0.8
         with:
           files: ${{ matrix.archive_name }}
 
@@ -85,9 +87,11 @@ jobs:
     name: Update Major Version Tag (v1)
     needs: build-release
     runs-on: ubuntu-latest
+    permissions:
+      contents: write
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v4
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
         with:
           fetch-depth: 0
 

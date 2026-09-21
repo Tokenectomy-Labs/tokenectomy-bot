@@ -8,12 +8,14 @@ on:
 
 permissions:
   contents: read
-  pull-requests: write
-  issues: write
 
 jobs:
   conversation:
     name: Reply to PR Comment / Bot Handover
+    permissions:
+      contents: read
+      pull-requests: write
+      issues: write
     # Trigger if it's a pull request comment AND either:
     # 1. Author is a human mentioning the bot or using slash commands
     # 2. Author is a supported bot (Dependabot, Renovate, CodeRabbit)
@@ -28,10 +30,10 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v4
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
 
       - name: Install Rust toolchain
-        uses: dtolnay/rust-toolchain@stable
+        uses: dtolnay/rust-toolchain@02cb101ec7c40f2c49e1d9714d64511d8e1b74de # master
 
       - name: Build Tmy-Joy Binary
         run: cargo build --release -p tb-cli
