@@ -44,6 +44,14 @@ inputs:
   output_file:
     description: 'Path to save report file (e.g. tokenectomy-report.sarif or tokenectomy-summary.md)'
     required: false
+  pr_comment:
+    description: 'Post or update sticky summary comment directly in Pull Request discussion'
+    required: false
+    default: 'true'
+  github_token:
+    description: 'GitHub Token for posting PR comments and reviews'
+    required: false
+    default: ${{ github.token }}
 
 outputs:
   exit_code:
@@ -95,6 +103,23 @@ runs:
         cargo run --manifest-path "${{ github.action_path }}/Cargo.toml" --quiet -p tb-cli -- review "${ARGS[@]}"
         EC=$?
         set -e
+
+        # Automatically post or update sticky PR comment in Pull Request discussion
+        PR_NUM="${{ github.event.pull_request.number }}"
+        if [ -n "$PR_NUM" ] && [ "${{ inputs.pr_comment }}" = "true" ] && [ -n "${{ inputs.github_token }}" ]; then
+          SUMMARY_FILE="/tmp/tokenectomy-sticky-summary.md"
+          SUMMARY_ARGS=("${ARGS[@]}")
+          # Replace format with summary for the markdown comment
+          cargo run --manifest-path "${{ github.action_path }}/Cargo.toml" --quiet -p tb-cli -- review "${SUMMARY_ARGS[@]}" --format summary --output "$SUMMARY_FILE" || true
+
+          if [ -f "$SUMMARY_FILE" ]; then
+            python3 "${{ github.action_path }}/scripts/post_pr_comment.py" \
+              --repo "${{ github.repository }}" \
+              --pr "$PR_NUM" \
+              --token "${{ inputs.github_token }}" \
+              --summary-file "$SUMMARY_FILE" || true
+          fi
+        fi
 
         echo "exit_code=$EC" >> "$GITHUB_OUTPUT"
         exit $EC
