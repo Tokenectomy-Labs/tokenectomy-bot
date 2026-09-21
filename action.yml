@@ -88,7 +88,7 @@ runs:
         fi
 
         set +e
-        cargo run --quiet -p tb-cli -- review "${ARGS[@]}"
+        cargo run --manifest-path "${{ github.action_path }}/Cargo.toml" --quiet -p tb-cli -- review "${ARGS[@]}"
         EC=$?
         set -e
 
