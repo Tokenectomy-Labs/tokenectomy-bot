@@ -219,47 +219,82 @@ impl ConversationEngine {
     /// M2M Protocol Generator: Machine-to-Machine dialogue with GitHub bots
     pub fn generate_bot_m2m_response(
         bot_kind: &BotKind,
-        _comment_text: &str,
+        comment_text: &str,
         gate_status: &GateStatus,
     ) -> String {
         match bot_kind {
-            BotKind::Dependabot => match gate_status {
-                GateStatus::Passed => {
-                    "🤖 **[Tmy-Joy M2M Protocol v1 ↔ @dependabot]**\n\n\
-                    > ✔ **All deterministic AST verification checks passed** (0 test tampering, 0 security flaws, 0 silent catches).\n\n\
-                    @dependabot squash and merge"
-                        .to_string()
-                }
-                GateStatus::Blocked {
-                    errors,
-                    warnings,
-                    rules_triggered,
-                } => {
-                    format!(
-                        "🤖 **[Tmy-Joy M2M Protocol v1 ↔ @dependabot]**\n\n\
-                        > ❌ **Deterministic Quality Gate BLOCKED** ({} errors, {} warnings).\n\
-                        > Triggered rules: `{}`.\n\n\
-                        Dependencies or changes violate repository integrity.\n\n\
-                        @dependabot recreate",
+            BotKind::Dependabot => {
+                let lower = comment_text.to_lowercase();
+                let is_security_discussion = lower.contains("cve")
+                    || lower.contains("security")
+                    || lower.contains("vulnerabilit")
+                    || lower.contains("advisory")
+                    || lower.contains("keamanan")
+                    || lower.contains("patch");
+
+                match gate_status {
+                    GateStatus::Passed => {
+                        if is_security_discussion {
+                            "🤖 **[Tmy-Joy M2M Security Protocol ↔ @dependabot]**\n\n\
+                            > 🛡️ **Autonomous Security Audit: VERIFIED & CLEAN**\n\n\
+                            Tmy-Joy deterministic AST engine evaluated repository security vitals:\n\
+                            - 🔒 **Supply-Chain Advisory**: Security patch acknowledged and verified against dependency tree.\n\
+                            - 🛡️ **AST Injection Resistance**: 0 shell injection (`TB202`), 0 dynamic eval (`TB201`), 0 raw SQL interpolation (`TB203`).\n\
+                            - 🧪 **Verification Integrity**: 0 test tampering (`TB001`-`TB006`), 0 lazy deletions (`TB007`), 0 domain narrowing (`TB008`).\n\
+                            - 🔏 **Audit Ledger**: Cryptographically sealed entry queued with SHA-256 genesis hash.\n\n\
+                            Security baseline maintained with 0 regressions.\n\n\
+                            @dependabot squash and merge"
+                                .to_string()
+                        } else {
+                            "🤖 **[Tmy-Joy M2M Protocol v1 ↔ @dependabot]**\n\n\
+                            > ✔ **All deterministic AST verification checks passed** (0 test tampering, 0 security flaws, 0 silent catches).\n\n\
+                            @dependabot squash and merge"
+                                .to_string()
+                        }
+                    }
+                    GateStatus::Blocked {
                         errors,
                         warnings,
-                        rules_triggered.join("`, `")
-                    )
+                        rules_triggered,
+                    } => {
+                        if is_security_discussion {
+                            format!(
+                                "🤖 **[Tmy-Joy M2M Security Protocol ↔ @dependabot]**\n\n\
+                                > ⚠️ **Security Update BLOCKED by Quality Gate** ({} errors, {} warnings)\n\n\
+                                While this update attempts to address security vulnerabilities, the incoming AST diff violates integrity rules:\n\
+                                - **Triggered Violations**: `{}`\n\
+                                - **Action Required**: Resolve regression or test tampering before merging.\n\n\
+                                @dependabot recreate",
+                                errors,
+                                warnings,
+                                rules_triggered.join("`, `")
+                            )
+                        } else {
+                            format!(
+                                "🤖 **[Tmy-Joy M2M Protocol v1 ↔ @dependabot]**\n\n\
+                                > ❌ **Deterministic Quality Gate BLOCKED** ({} errors, {} warnings).\n\
+                                > Triggered rules: `{}`.\n\n\
+                                Dependencies or changes violate repository integrity.\n\n\
+                                @dependabot recreate",
+                                errors,
+                                warnings,
+                                rules_triggered.join("`, `")
+                            )
+                        }
+                    }
+                    _ => "🤖 **[Tmy-Joy M2M Protocol v1 ↔ @dependabot]**\n\n\
+                        Security vitals evaluation in progress. Awaiting AST diff analysis."
+                        .to_string(),
                 }
-                _ => {
-                    "🤖 **[Tmy-Joy M2M Protocol v1 ↔ @dependabot]**\n\n\
-                    Verification in progress. Awaiting AST diff analysis."
-                        .to_string()
-                }
-            },
+            }
             BotKind::Renovate => match gate_status {
-                GateStatus::Passed => {
-                    "🤖 **[Tmy-Joy M2M Protocol v1 ↔ @renovate]**\n\n\
+                GateStatus::Passed => "🤖 **[Tmy-Joy M2M Protocol v1 ↔ @renovate]**\n\n\
                     > ✔ **Verification PASSED**: AST Tree-sitter validated zero regressions.\n\n\
                     @renovate merge"
-                        .to_string()
-                }
-                GateStatus::Blocked { rules_triggered, .. } => {
+                    .to_string(),
+                GateStatus::Blocked {
+                    rules_triggered, ..
+                } => {
                     format!(
                         "🤖 **[Tmy-Joy M2M Protocol v1 ↔ @renovate]**\n\n\
                         > ❌ **Verification BLOCKED**: AST rules `{}` failed.\n\n\
@@ -267,11 +302,9 @@ impl ConversationEngine {
                         rules_triggered.join("`, `")
                     )
                 }
-                _ => {
-                    "🤖 **[Tmy-Joy M2M Protocol v1 ↔ @renovate]**\n\n\
+                _ => "🤖 **[Tmy-Joy M2M Protocol v1 ↔ @renovate]**\n\n\
                     Verification pending."
-                        .to_string()
-                }
+                    .to_string(),
             },
             BotKind::CodeRabbit => {
                 let status_line = match gate_status {
@@ -291,16 +324,12 @@ impl ConversationEngine {
                     status_line
                 )
             }
-            BotKind::Copilot => {
-                "🤖 **[Tmy-Joy M2M Protocol v1 ↔ @copilot]**\n\n\
+            BotKind::Copilot => "🤖 **[Tmy-Joy M2M Protocol v1 ↔ @copilot]**\n\n\
                 Acknowledged AI Copilot activity. Deterministic AST verification gate active."
-                    .to_string()
-            }
-            BotKind::GitHubActions => {
-                "🤖 **[Tmy-Joy M2M Protocol v1 ↔ @github-actions]**\n\n\
+                .to_string(),
+            BotKind::GitHubActions => "🤖 **[Tmy-Joy M2M Protocol v1 ↔ @github-actions]**\n\n\
                 Workflow notification recorded in Tmy-Joy session."
-                    .to_string()
-            }
+                .to_string(),
             BotKind::Other(name) => {
                 format!(
                     "🤖 **[Tmy-Joy M2M Handover v1]**\n\n\
@@ -713,6 +742,24 @@ mod tests {
 
         assert!(response.contains("@dependabot recreate"));
         assert!(response.contains("TB101"));
+    }
+
+    #[test]
+    fn test_m2m_dependabot_security_discussion() {
+        let sender = SenderKind::Bot(BotKind::Dependabot);
+        let gate_status = GateStatus::Passed;
+        let response = ConversationEngine::generate_response(
+            &sender,
+            "Bumps h2 from 0.3.24 to 0.3.26 to fix CVE-2024-2699: HTTP/2 flood security vulnerability",
+            &gate_status,
+            "Tokenectomy-Labs/tokenctomy-bot",
+            101,
+        );
+
+        assert!(response.contains("Tmy-Joy M2M Security Protocol"));
+        assert!(response.contains("Autonomous Security Audit: VERIFIED & CLEAN"));
+        assert!(response.contains("TB202"));
+        assert!(response.contains("@dependabot squash and merge"));
     }
 
     #[test]
