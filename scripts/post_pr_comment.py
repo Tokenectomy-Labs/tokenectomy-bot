@@ -16,10 +16,28 @@ STICKY_MARKER = "<!-- tokenectomy-bot:sticky-summary -->"
 def post_or_update_comment(repo: str, pr_number: int, token: str, summary_content: str):
     headers = {
         "Authorization": f"Bearer {token}",
-        "User-Agent": "Tokenectomy-Bot/1.0",
+        "User-Agent": "Tmy-Joy/1.0",
         "Content-Type": "application/json",
         "Accept": "application/vnd.github.v3+json"
     }
+
+    # Detect if PR author is dependabot[bot] for M2M handover
+    pr_author = None
+    try:
+        pr_url = f"https://api.github.com/repos/{repo}/pulls/{pr_number}"
+        req_pr = urllib.request.Request(pr_url, headers=headers)
+        with urllib.request.urlopen(req_pr) as resp:
+            pr_data = json.loads(resp.read().decode("utf-8"))
+            pr_author = pr_data.get("user", {}).get("login")
+    except Exception as e:
+        print(f"[tmy-joy] Notice: Could not inspect PR author: {e}", file=sys.stderr)
+
+    # If Dependabot PR, append M2M Handover tag
+    if pr_author == "dependabot[bot]":
+        if "BLOCKED" in summary_content:
+            summary_content += "\n\n---\n🤖 **M2M Handover**: Quality gate failed. @dependabot recreate\n"
+        elif "PASSED" in summary_content:
+            summary_content += "\n\n---\n🤖 **M2M Handover**: All deterministic quality checks passed. @dependabot squash and merge\n"
 
     # 1. Fetch existing comments to find sticky comment ID
     existing_comment_id = None
@@ -33,7 +51,7 @@ def post_or_update_comment(repo: str, pr_number: int, token: str, summary_conten
                     existing_comment_id = c.get("id")
                     break
     except Exception as e:
-        print(f"[tokenectomy-bot] Warning: Failed to query existing PR comments: {e}", file=sys.stderr)
+        print(f"[tmy-joy] Warning: Failed to query existing PR comments: {e}", file=sys.stderr)
 
     payload = json.dumps({"body": summary_content}).encode("utf-8")
 

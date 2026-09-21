@@ -27,7 +27,7 @@ impl StickySummaryReporter {
             .count();
 
         if findings.is_empty() {
-            out.push_str("## 🗡️ Tokenectomy Bot: PR Verification PASSED ✔\n\n");
+            out.push_str("## 🗡️ Tmy-Joy: PR Verification PASSED ✔\n\n");
             out.push_str("> **All deterministic verification checks passed.** No test tampering, silent catch, or security flaws detected.\n\n");
             out.push_str(&format!(
                 "*Dipindai {} dari {} berkas. Engine AST Tree-sitter zero-LLM.*\n",
@@ -38,16 +38,16 @@ impl StickySummaryReporter {
 
         let status_header = if errors > 0 {
             format!(
-                "## 🗡️ Tokenectomy Bot: BLOCKED ({} errors, {} warnings, {} info) ❌",
+                "## 🗡️ Tmy-Joy: BLOCKED ({} errors, {} warnings, {} info) ❌",
                 errors, warnings, infos
             )
         } else if warnings > 0 {
             format!(
-                "## 🗡️ Tokenectomy Bot: WARNING ({} warnings, {} info) ⚠️",
+                "## 🗡️ Tmy-Joy: WARNING ({} warnings, {} info) ⚠️",
                 warnings, infos
             )
         } else {
-            format!("## 🗡️ Tokenectomy Bot: NOTICE ({} info) ℹ️", infos)
+            format!("## 🗡️ Tmy-Joy: NOTICE ({} info) ℹ️", infos)
         };
 
         out.push_str(&status_header);
