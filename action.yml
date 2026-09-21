@@ -79,12 +79,12 @@ runs:
           ARGS+=(--agent-pr)
         fi
 
-        if [ "${{ inputs.fail_open }}" = "true" ]; then
-          ARGS+=(--fail-open)
+        if [ -n "${{ inputs.fail_open }}" ]; then
+          ARGS+=(--fail-open "${{ inputs.fail_open }}")
         fi
 
-        if [ "${{ inputs.step_summary }}" = "true" ]; then
-          ARGS+=(--step-summary)
+        if [ -n "${{ inputs.step_summary }}" ]; then
+          ARGS+=(--step-summary "${{ inputs.step_summary }}")
         fi
 
         if [ -n "${{ inputs.output_file }}" ]; then

@@ -219,7 +219,7 @@ pub struct ReviewArgs {
     output: Option<PathBuf>,
 
     /// Fail open (exit 0) if internal git or tool error occurs
-    #[arg(long, default_value_t = true, action = clap::ArgAction::Set)]
+    #[arg(long, default_value_t = true, action = clap::ArgAction::Set, num_args(0..=1), default_missing_value = "true")]
     fail_open: bool,
 
     /// Path to baseline JSON file containing fingerprints to ignore
@@ -239,7 +239,7 @@ pub struct ReviewArgs {
     max_file_size: u64,
 
     /// Automatically append sticky summary to $GITHUB_STEP_SUMMARY
-    #[arg(long, default_value_t = true)]
+    #[arg(long, default_value_t = true, action = clap::ArgAction::Set, num_args(0..=1), default_missing_value = "true")]
     step_summary: bool,
 }
 
