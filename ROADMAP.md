@@ -73,16 +73,16 @@ Kode rule: **TB0xx** integritas verifikasi, **TB1xx** reliabilitas, **TB2xx** ke
 
 Mendeteksi trik agent yang membuat CI hijau tanpa memperbaiki perilaku. Ini melanjutkan pekerjaan Sentinel ke sisi PR.
 
-- [ ] **TB001 `assertion-removed`**: jumlah assertion turun bersih di dalam test block yang masih ada (bukan test yang dihapus utuh).
-- [ ] **TB002 `test-disabled`**: penambahan `.skip`, `xit`, `xdescribe`, `it.todo`, `test.fixme`, dan padanannya (`#[ignore]`, `@Ignore`) pada tahap bahasa berikutnya.
-- [ ] **TB003 `tautological-assertion`**: `expect(true).toBe(true)`, `assert(1 === 1)`, membandingkan nilai dengan dirinya sendiri.
-- [ ] **TB004 `config-weakened`**: perubahan yang melemahkan verifikasi: `testPathIgnorePatterns` bertambah, ambang coverage turun, `passWithNoTests`, `strict: false` di tsconfig, aturan lint dimatikan, `continue-on-error: true` atau langkah test dihapus di workflow CI.
-- [ ] **TB005 `early-exit-injected`**: `return`/`process.exit(0)`/`throw` baru yang membuat sisa fungsi atau test tak terjangkau.
-- [ ] **TB006 `test-deleted-with-source-change`** (severity `info`): test dihapus dalam PR yang juga mengubah kode sumber terkait.
-- [ ] **TB007 `lazy-deletion`**: fungsi atau cabang `if` dihapus, atau body diganti `return null`, `todo!()`, `throw new Error("not implemented")`, sementara pemanggilnya tetap ada.
-- [ ] **TB008 `domain-narrowing`**: guard baru yang hanya meloloskan literal yang sama dengan nilai di test (special-casing agar test hijau, bukan perbaikan perilaku).
-- [ ] **TB009 `fixture-snooping`**: kode produksi membaca `fixtures/` atau `__tests__`, atau bercabang pada `NODE_ENV === 'test'` di dalam logika bisnis.
-- [ ] **Deteksi PR buatan agent** (menaikkan severity, bukan syarat aktif): prefiks branch, trailer `Co-authored-by`, label PR, akun bot. Mode `agent-pr` menjadikan TB001–TB005 berstatus `error`.
+- [x] **TB001 `assertion-removed`**: jumlah assertion turun bersih di dalam test block yang masih ada (bukan test yang dihapus utuh).
+- [x] **TB002 `test-disabled`**: penambahan `.skip`, `xit`, `xdescribe`, `it.todo`, `test.fixme`, dan padanannya (`#[ignore]`, `@Ignore`) pada tahap bahasa berikutnya.
+- [x] **TB003 `tautological-assertion`**: `expect(true).toBe(true)`, `assert(1 === 1)`, membandingkan nilai dengan dirinya sendiri.
+- [x] **TB004 `config-weakened`**: perubahan yang melemahkan verifikasi: `testPathIgnorePatterns` bertambah, ambang coverage turun, `passWithNoTests`, `strict: false` di tsconfig, aturan lint dimatikan, `continue-on-error: true` atau langkah test dihapus di workflow CI.
+- [x] **TB005 `early-exit-injected`**: `return`/`process.exit(0)`/`throw` baru yang membuat sisa fungsi atau test tak terjangkau.
+- [x] **TB006 `test-deleted-with-source-change`** (severity `info`): test dihapus dalam PR yang juga mengubah kode sumber terkait.
+- [x] **TB007 `lazy-deletion`**: fungsi atau cabang `if` dihapus, atau body diganti `return null`, `todo!()`, `throw new Error("not implemented")`, sementara pemanggilnya tetap ada.
+- [x] **TB008 `domain-narrowing`**: guard baru yang hanya meloloskan literal yang sama dengan nilai di test (special-casing agar test hijau, bukan perbaikan perilaku).
+- [x] **TB009 `fixture-snooping`**: kode produksi membaca `fixtures/` atau `__tests__`, atau bercabang pada `NODE_ENV === 'test'` di dalam logika bisnis.
+- [x] **Deteksi PR buatan agent** (menaikkan severity, bukan syarat aktif): prefiks branch, trailer `Co-authored-by`, label PR, akun bot. Mode `agent-pr` menjadikan TB001–TB005 berstatus `error`.
 
 ### Rule 1: Reliabilitas
 

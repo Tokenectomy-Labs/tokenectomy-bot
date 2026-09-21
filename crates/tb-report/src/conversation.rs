@@ -506,6 +506,25 @@ impl ConversationEngine {
                 - **Fix**: Keep tests synchronized with refactored behavior."
                     .to_string()
             }
+            "TB007" => {
+                "### 📖 Rule TB007: `lazy-deletion`\n\n\
+                - **Category**: Verification Integrity (Anti-Tampering)\n\
+                - **Default Severity**: `error`\n\
+                - **Description**: Function or method body gutted to a dummy surrender stub (`return null;`, `return false;`, `todo!()`, `pass`, `raise NotImplementedError`, `throw new Error(\"not implemented\")`).\n\
+                - **Why Dangerous**: A notorious AI agent pattern where the agent deletes business logic or surrenders when a test fails, creating a hollow implementation.\n\
+                - **Fix**: Restore real business logic rather than surrendering with a dummy return.\n\
+                - **Suppression**: `// tokenectomy-ignore: TB007 -- reason`"
+                    .to_string()
+            }
+            "TB008" => {
+                "### 📖 Rule TB008: `domain-narrowing`\n\n\
+                - **Category**: Verification Integrity (Anti-Tampering)\n\
+                - **Default Severity**: `error`\n\
+                - **Description**: Injected artificial guard clause checking equality against specific test fixture literals (e.g. `if (id === \"test-user-123\") return mock;` or `if (amount === 100) return 15;`).\n\
+                - **Why Dangerous**: Special-casing inputs to artificially pass CI test cases without solving general domain behavior.\n\
+                - **Fix**: Write general domain logic capable of handling arbitrary inputs."
+                    .to_string()
+            }
             "TB009" => {
                 "### 📖 Rule TB009: `fixture-snooping`\n\n\
                 - **Category**: Verification Integrity\n\
@@ -588,6 +607,8 @@ impl ConversationEngine {
         | `TB004` | `config-weakened` | Verification Integrity | Error |\n\
         | `TB005` | `early-exit-injected` | Verification Integrity | Error |\n\
         | `TB006` | `test-deleted` | Verification Integrity | Info |\n\
+        | `TB007` | `lazy-deletion` | Verification Integrity | Error |\n\
+        | `TB008` | `domain-narrowing` | Verification Integrity | Error |\n\
         | `TB009` | `fixture-snooping` | Verification Integrity | Error |\n\
         | `TB101` | `silent-catch` | Reliability | Error |\n\
         | `TB102` | `unbounded-query` | Reliability | Warn |\n\
@@ -700,6 +721,17 @@ mod tests {
         assert!(explanation.contains("TB001"));
         assert!(explanation.contains("assertion-removed"));
         assert!(explanation.contains("Anti-Tampering"));
+    }
+
+    #[test]
+    fn test_explain_tb007_and_tb008() {
+        let exp7 = ConversationEngine::explain_rule("TB007");
+        assert!(exp7.contains("TB007"));
+        assert!(exp7.contains("lazy-deletion"));
+
+        let exp8 = ConversationEngine::explain_rule("TB008");
+        assert!(exp8.contains("TB008"));
+        assert!(exp8.contains("domain-narrowing"));
     }
 
     #[test]
