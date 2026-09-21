@@ -107,6 +107,15 @@ Mendeteksi trik agent yang membuat CI hijau tanpa memperbaiki perilaku. Ini mela
 - [x] **TB202 `shell-injection`**: `exec`/`execSync` dengan string hasil interpolasi atau konkatenasi dari nilai non-literal.
 - [x] **TB203 `raw-sql-interpolation`**: `$queryRawUnsafe`, `.query()` dengan template literal berisi variabel.
 
+### Rule 3: Integritas Simbol & Anti-Halusinasi AI Agent (Hallucination Buster)
+
+- [x] **TB301 `phantom-symbol`** (Hallucination Buster)
+  - Deteksi impor relatif (`./`, `../`) yang mereferensikan modul berkas fiktif (tidak pernah ada di diff maupun filesystem repositori).
+  - Cross-file AST symbol resolver: mem-parse deklarasi ekspor (`export function`, `export const/let/var`, `export class/interface/type`, `export { ... }`, CommonJS `module.exports`) pada target module untuk memastikan simbol benar-benar diekspor.
+  - Mencegah agent berhalusinasi mengarang fungsi atau konstanta pembantu yang tidak pernah diekspor oleh modul tujuan.
+  - Memberikan fix hint berupa daftar ekspor valid yang tersedia.
+  - 100% deterministik Tree-sitter & zero-LLM token overhead.
+
 ### Tata Kelola Kualitas Rule
 
 - [x] **Siklus hidup rule:** `experimental` (tidak ditampilkan) → `warn` → `error`. Kenaikan status wajib melewati precision gate.
@@ -187,6 +196,21 @@ Menjadikan bot ini produk, bukan sekadar action.
 - [x] **Dasbor & Metrik**
   - Percobaan tampering yang diblokir, tingkat lolos PR agent, rule terbanyak memicu, waktu review; notifikasi Webhook Slack/Discord/Teams.
 - *Dikecualikan (Sengaja Ditolak)*: **Lapisan LLM (Sentinel Pro)** — Seluruh keputusan dan arsitektur tetap **100% Zero-LLM & deterministik AST murni** tanpa biaya token atau resiko halusinasi.
+
+---
+
+## Tahap 6: Analisis Blast Radius & Visualisasi Arsitektur (Next-Gen)
+
+Menjadikan PR review bot sadar konteks arsitektural secara menyeluruh dengan memetakan dampak perubahan kode ke seluruh repositori secara instan.
+
+- [x] **Blast Radius Dependency Analyzer**
+  - Pemetaan graph dependensi multi-tingkat (Direct Callers: depth 1, Indirect Callers: depth 2) melintasi ribuan berkas repositori dalam waktu < 5ms.
+  - Heuristik path sensitif otomatis: mendeteksi modul berdampak tinggi (`auth`, `payment`, `billing`, `crypto`, `security`, `wallet`, `core`).
+  - Skor risiko kuantitatif terkalibrasi (0–100) dan klasifikasi level risiko (`LOW`, `MEDIUM`, `HIGH`, `CRITICAL`) untuk memandu keputusan reviewer.
+- [x] **Mermaid Architecture Diagram di PR Review**
+  - Diagram visual GitHub Flavored Markdown `graph TD` yang otomatis dirender di PR Summary Sticky Comment dan GitHub Step Summary.
+  - Node styling cerdas: warna merah/oranye untuk berkas yang dimodifikasi, kuning untuk caller langsung, abu-abu untuk pemanggil transitif.
+  - Penanganan batas visualisasi (max 15 node) agar diagram tetap terbaca jelas dan tidak membuat PR lagging.
 
 ---
 

@@ -122,6 +122,8 @@ pub struct RuleContext<'a> {
     pub new_parsed: Option<&'a ParsedSource>,
     pub logger_names: Option<&'a [String]>,
     pub orm_modules: Option<&'a [String]>,
+    pub all_sources: Option<&'a std::collections::HashMap<PathBuf, String>>,
+    pub repo_dir: Option<&'a Path>,
 }
 
 impl<'a> RuleContext<'a> {
@@ -136,6 +138,8 @@ impl<'a> RuleContext<'a> {
             new_parsed,
             logger_names: None,
             orm_modules: None,
+            all_sources: None,
+            repo_dir: None,
         }
     }
 

@@ -180,6 +180,8 @@ impl CustomRule {
             new_parsed: Some(&parsed),
             logger_names: None,
             orm_modules: None,
+            all_sources: None,
+            repo_dir: None,
         };
 
         let findings = self.check(&ctx);

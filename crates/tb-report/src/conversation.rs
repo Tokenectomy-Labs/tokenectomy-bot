@@ -634,9 +634,18 @@ impl ConversationEngine {
                 - **Fix**: Use parameterized queries (`$1, $2`) or tagged template literals (`$queryRaw` / `sql` tag)."
                     .to_string()
             }
+            "TB301" => {
+                "### 📖 Rule TB301: `phantom-symbol`\n\n\
+                - **Category**: AI Hallucination & Integrity\n\
+                - **Default Severity**: `error`\n\
+                - **Description**: AI agent imported a module that does not exist in the repository, or imported a function/constant that is never exported by the target file.\n\
+                - **Why Dangerous**: Classic LLM hallucination failure mode. Causes runtime crashes (`Cannot find module` or `TypeError: undefined is not a function`).\n\
+                - **Fix**: Export the referenced symbol from the target file or verify the correct local module path."
+                    .to_string()
+            }
             _ => {
                 format!(
-                    "❓ Unknown rule `{}`. Active rules: `TB001`-`TB009`, `TB101`-`TB105`, `TB201`-`TB203`. Type `@tmy-joy rules` to see all.",
+                    "❓ Unknown rule `{}`. Active rules: `TB001`-`TB009`, `TB101`-`TB105`, `TB201`-`TB203`, `TB301`. Type `@tmy-joy rules` to see all.",
                     rule_id
                 )
             }
@@ -664,7 +673,8 @@ impl ConversationEngine {
         | `TB105` | `await-in-loop` | Reliability & Performance | Warn |\n\
         | `TB201` | `dynamic-eval` | Security | Error |\n\
         | `TB202` | `shell-injection` | Security | Error |\n\
-        | `TB203` | `raw-sql-interpolation` | Security | Error |\n\n\
+        | `TB203` | `raw-sql-interpolation` | Security | Error |\n\
+        | `TB301` | `phantom-symbol` | AI Hallucination & Integrity | Error |\n\n\
         *All rules run on Tree-sitter AST syntax trees with 0% LLM hallucination risk.*"
             .to_string()
     }

@@ -9,6 +9,15 @@ pub struct StickySummaryReporter;
 
 impl StickySummaryReporter {
     pub fn format(findings: &[Finding], total_scanned: usize, total_files: usize) -> String {
+        Self::format_with_blast_radius(findings, total_scanned, total_files, None)
+    }
+
+    pub fn format_with_blast_radius(
+        findings: &[Finding],
+        total_scanned: usize,
+        total_files: usize,
+        blast_radius: Option<&tb_rules::BlastRadiusReport>,
+    ) -> String {
         let mut out = String::new();
         out.push_str(STICKY_MARKER);
         out.push_str("\n\n");
@@ -29,6 +38,9 @@ impl StickySummaryReporter {
         if findings.is_empty() {
             out.push_str("## 🗡️ Tmy-Joy: PR Verification PASSED ✔\n\n");
             out.push_str("> **All deterministic verification checks passed.** No test tampering, silent catch, or security flaws detected.\n\n");
+            if let Some(br) = blast_radius {
+                Self::append_blast_radius_section(&mut out, br);
+            }
             out.push_str(&format!(
                 "*Dipindai {} dari {} berkas. Engine AST Tree-sitter zero-LLM.*\n",
                 total_scanned, total_files
@@ -95,12 +107,56 @@ impl StickySummaryReporter {
         }
 
         out.push_str("</details>\n\n");
+
+        if let Some(br) = blast_radius {
+            Self::append_blast_radius_section(&mut out, br);
+        }
+
         out.push_str(&format!(
             "---\n*Laporan dihasilkan secara deterministik oleh [tokenectomy-bot](https://github.com/Tokenectomy-Labs/tokenectomy-bot) ({}/{} berkas dipindai).*\n",
             total_scanned, total_files
         ));
 
         out
+    }
+
+    fn append_blast_radius_section(out: &mut String, br: &tb_rules::BlastRadiusReport) {
+        if br.direct_dependents.is_empty() && br.modified_files.is_empty() {
+            return;
+        }
+
+        let badge = match br.risk_level {
+            tb_rules::RiskLevel::Low => "🟢 LOW",
+            tb_rules::RiskLevel::Medium => "🟡 MEDIUM",
+            tb_rules::RiskLevel::High => "🟠 HIGH",
+            tb_rules::RiskLevel::Critical => "🔴 CRITICAL",
+        };
+
+        out.push_str(&format!(
+            "### 🗺️ Blast Radius & Impact Architecture\n\n\
+            > **Risk Level**: {} (Score: **{}/100**)\n\
+            > *Modifikasi ini berdampak pada {} berkas pemanggil langsung dan {} berkas turunan.*\n\n",
+            badge,
+            br.risk_score,
+            br.direct_dependents.len(),
+            br.indirect_dependents.len()
+        ));
+
+        if !br.sensitive_paths_affected.is_empty() {
+            let sensitive_str = br
+                .sensitive_paths_affected
+                .iter()
+                .map(|p| format!("`{}`", p.display()))
+                .collect::<Vec<_>>()
+                .join(", ");
+            out.push_str(&format!(
+                "🔒 **Perhatian Modul Kritis**: Perubahan ini menyentuh jalur sensitif: {}\n\n",
+                sensitive_str
+            ));
+        }
+
+        out.push_str(&br.mermaid_diagram);
+        out.push_str("\n\n");
     }
 
     /// Automatically appends the summary to $GITHUB_STEP_SUMMARY if running in GitHub Actions

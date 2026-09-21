@@ -10,7 +10,7 @@ use crate::rules::{
     Tb005EarlyExitInjected, Tb006TestDeleted, Tb007LazyDeletion, Tb008DomainNarrowing,
     Tb009FixtureSnooping, Tb101SilentCatch, Tb102UnboundedQuery, Tb103FloatingPromise,
     Tb104AsyncForeach, Tb105AwaitInLoop, Tb201DynamicEval, Tb202ShellInjection,
-    Tb203RawSqlInterpolation,
+    Tb203RawSqlInterpolation, Tb301PhantomSymbol,
 };
 use crate::traits::Rule;
 
@@ -19,6 +19,7 @@ pub struct RuleEngine {
     baseline: HashSet<String>,
     agent_mode: bool,
     config: Config,
+    repo_dir: Option<PathBuf>,
 }
 
 impl Default for RuleEngine {
@@ -47,6 +48,7 @@ impl RuleEngine {
             Box::new(Tb201DynamicEval),
             Box::new(Tb202ShellInjection),
             Box::new(Tb203RawSqlInterpolation),
+            Box::new(Tb301PhantomSymbol),
         ];
 
         Self {
@@ -54,7 +56,13 @@ impl RuleEngine {
             baseline: HashSet::new(),
             agent_mode: false,
             config: Config::default(),
+            repo_dir: None,
         }
+    }
+
+    pub fn with_repo_dir(mut self, repo_dir: PathBuf) -> Self {
+        self.repo_dir = Some(repo_dir);
+        self
     }
 
     pub fn with_baseline(mut self, baseline: HashSet<String>) -> Self {
@@ -122,6 +130,8 @@ impl RuleEngine {
                 new_parsed: new_parsed.as_ref(),
                 logger_names: self.config.logger_names.as_deref(),
                 orm_modules: self.config.orm_modules.as_deref(),
+                all_sources: Some(new_sources),
+                repo_dir: self.repo_dir.as_deref(),
             };
 
             for rule in &self.rules {

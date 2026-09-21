@@ -15,6 +15,7 @@ pub mod tb105_await_in_loop;
 pub mod tb201_dynamic_eval;
 pub mod tb202_shell_injection;
 pub mod tb203_raw_sql_interpolation;
+pub mod tb301_phantom_symbol;
 
 pub use tb001_assertion_removed::Tb001AssertionRemoved;
 pub use tb002_test_disabled::Tb002TestDisabled;
@@ -33,3 +34,4 @@ pub use tb105_await_in_loop::Tb105AwaitInLoop;
 pub use tb201_dynamic_eval::Tb201DynamicEval;
 pub use tb202_shell_injection::Tb202ShellInjection;
 pub use tb203_raw_sql_interpolation::Tb203RawSqlInterpolation;
+pub use tb301_phantom_symbol::Tb301PhantomSymbol;

@@ -572,7 +572,8 @@ fn run_review(args: ReviewArgs) -> Result<i32> {
     let mut engine = RuleEngine::new()
         .with_baseline(baseline_set)
         .with_agent_mode(is_agent)
-        .with_config(config.clone());
+        .with_config(config.clone())
+        .with_repo_dir(repo_dir.clone());
 
     // Load custom .scm rules
     let custom_rules_path = args
@@ -589,15 +590,31 @@ fn run_review(args: ReviewArgs) -> Result<i32> {
     }
 
     let findings = engine.run(&diff, &old_sources, &new_sources);
+    let blast_report = tb_rules::BlastRadiusAnalyzer::analyze(&diff, &new_sources, Some(&repo_dir));
 
     let output_str = match args.format {
-        OutputFormat::Text => TextReporter::format(&findings),
+        OutputFormat::Text => {
+            let mut text = TextReporter::format(&findings);
+            if blast_report.risk_score > 0 || !blast_report.direct_dependents.is_empty() {
+                text.push_str(&format!(
+                    "\n🗺️ Blast Radius: {} Risk (Score: {}/100) — Direct: {}, Indirect: {}\n",
+                    blast_report.risk_level,
+                    blast_report.risk_score,
+                    blast_report.direct_dependents.len(),
+                    blast_report.indirect_dependents.len()
+                ));
+            }
+            text
+        }
         OutputFormat::Json => JsonReporter::format(&findings),
         OutputFormat::Sarif => SarifReporter::format(&findings),
         OutputFormat::Github => GitHubAnnotationReporter::format(&findings),
-        OutputFormat::Summary => {
-            StickySummaryReporter::format(&findings, total_scanned, total_files)
-        }
+        OutputFormat::Summary => StickySummaryReporter::format_with_blast_radius(
+            &findings,
+            total_scanned,
+            total_files,
+            Some(&blast_report),
+        ),
         OutputFormat::ReviewBatch => {
             let payload = ReviewBatchGenerator::build_payload(&diff, &findings);
             serde_json::to_string_pretty(&payload).unwrap_or_else(|_| "{}".to_string())
@@ -606,7 +623,12 @@ fn run_review(args: ReviewArgs) -> Result<i32> {
 
     // If running in GitHub Actions, automatically append sticky summary to $GITHUB_STEP_SUMMARY
     if args.step_summary {
-        let summary_md = StickySummaryReporter::format(&findings, total_scanned, total_files);
+        let summary_md = StickySummaryReporter::format_with_blast_radius(
+            &findings,
+            total_scanned,
+            total_files,
+            Some(&blast_report),
+        );
         let _ = StickySummaryReporter::write_to_step_summary(&summary_md);
         let _ = fs::write("/tmp/tokenectomy-sticky-summary.md", &summary_md);
     }
