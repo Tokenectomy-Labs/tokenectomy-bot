@@ -1,7 +1,9 @@
-name: Tmy-Joy PR Gate
+name: Tokenectomy Bot PR Gate (Dogfooding)
 
 on:
   pull_request:
+    branches: [main]
+  push:
     branches: [main]
 
 permissions:
@@ -19,10 +21,11 @@ jobs:
         with:
           fetch-depth: 0
 
-      - name: Run Tmy-Joy PR Gate
+      - name: Run Tokenectomy Bot PR Gate
         uses: ./
         with:
-          base: origin/${{ github.base_ref || 'main' }}
+          base: ${{ github.event_name == 'pull_request' && format('origin/{0}', github.base_ref) || 'HEAD~1' }}
           head: HEAD
-          pr_comment: 'true'
+          pr_comment: ${{ github.event_name == 'pull_request' && 'true' || 'false' }}
+          auto_fix: 'false'
           github_token: ${{ secrets.GITHUB_TOKEN }}

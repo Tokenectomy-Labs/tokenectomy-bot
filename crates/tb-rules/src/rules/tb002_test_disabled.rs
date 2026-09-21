@@ -81,7 +81,7 @@ impl Rule for Tb002TestDisabled {
                 let (start_col, _) = ParsedSource::point_to_1indexed(node.start_position());
                 let (_, end_col) = ParsedSource::point_to_1indexed(node.end_position());
 
-                findings.push(Finding::new(
+                let mut finding = Finding::new(
                     self.id(),
                     self.name(),
                     self.default_severity(),
@@ -95,7 +95,41 @@ impl Rule for Tb002TestDisabled {
                     Some("Do not skip tests to make CI green. Fix the underlying issue or update expected behavior.".to_string()),
                     node.kind(),
                     text,
-                ));
+                );
+
+                if text.starts_with("xit(") {
+                    let reenabled = text.replacen("xit(", "it(", 1);
+                    finding = finding.with_auto_fix(crate::model::AutoFix::new(
+                        reenabled,
+                        start_line,
+                        end_line,
+                        start_col,
+                        end_col,
+                        "Re-enable test by replacing xit with it",
+                    ));
+                } else if text.starts_with("xdescribe(") {
+                    let reenabled = text.replacen("xdescribe(", "describe(", 1);
+                    finding = finding.with_auto_fix(crate::model::AutoFix::new(
+                        reenabled,
+                        start_line,
+                        end_line,
+                        start_col,
+                        end_col,
+                        "Re-enable test by replacing xdescribe with describe",
+                    ));
+                } else if text.contains(".skip(") {
+                    let reenabled = text.replacen(".skip(", "(", 1);
+                    finding = finding.with_auto_fix(crate::model::AutoFix::new(
+                        reenabled,
+                        start_line,
+                        end_line,
+                        start_col,
+                        end_col,
+                        "Re-enable skipped test",
+                    ));
+                }
+
+                findings.push(finding);
             }
         }
 

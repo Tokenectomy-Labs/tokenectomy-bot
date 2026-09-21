@@ -30,3 +30,7 @@ jobs:
 
       - name: Run Test Suite
         run: cargo test --workspace --verbose
+
+      - name: Self-Dogfooding Verification Gate
+        if: matrix.os == 'ubuntu-latest'
+        run: cargo run --release -p tb-cli -- review --base HEAD~1 --head HEAD --fail-open true

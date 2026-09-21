@@ -62,10 +62,21 @@ impl Rule for Tb101SilentCatch {
 
                 if is_empty_or_comments_only {
                     let (start_line, end_line) = ParsedSource::node_line_range(&node);
-                    let (start_col, _) = ParsedSource::point_to_1indexed(node.start_position());
-                    let (_, end_col) = ParsedSource::point_to_1indexed(node.end_position());
+                    let (start_col, end_col) = ParsedSource::node_col_range(&node);
 
-                    findings.push(Finding::new(
+                    let mut param = "err";
+                    if let Some(param_node) = (0..node.child_count())
+                        .filter_map(|i| node.child(i))
+                        .find(|c| c.kind() == "catch_parameter" || c.kind() == "identifier")
+                    {
+                        let p_text = new_parsed.node_text(&param_node).trim();
+                        let p_clean = p_text.trim_matches(|c| c == '(' || c == ')').trim();
+                        if !p_clean.is_empty() {
+                            param = p_clean;
+                        }
+                    }
+
+                    let finding = Finding::new(
                         self.id(),
                         self.name(),
                         self.default_severity(),
@@ -80,7 +91,15 @@ impl Rule for Tb101SilentCatch {
                         Some("Log the error with a logger, re-throw, or return a fallback result.".to_string()),
                         node.kind(),
                         text,
+                    ).with_auto_fix(crate::model::AutoFix::new(
+                        format!("catch ({}) {{\n    console.error({});\n}}", param, param),
+                        start_line,
+                        end_line,
+                        start_col,
+                        end_col,
+                        "Log caught error to console",
                     ));
+                    findings.push(finding);
                 }
             }
         }
@@ -152,7 +171,13 @@ impl Rule for Tb101SilentCatch {
                     let (start_col, _) = ParsedSource::point_to_1indexed(node.start_position());
                     let (_, end_col) = ParsedSource::point_to_1indexed(node.end_position());
 
-                    findings.push(Finding::new(
+                    let header = text
+                        .split_once(':')
+                        .map(|(h, _)| h)
+                        .unwrap_or("except Exception as err");
+                    let fixed_py = format!("{}:\n    logging.exception(err)", header.trim());
+
+                    let finding = Finding::new(
                         self.id(),
                         self.name(),
                         self.default_severity(),
@@ -167,7 +192,15 @@ impl Rule for Tb101SilentCatch {
                         Some("Log the error with logging or re-raise with raise.".to_string()),
                         node.kind(),
                         text,
+                    ).with_auto_fix(crate::model::AutoFix::new(
+                        fixed_py,
+                        start_line,
+                        end_line,
+                        start_col,
+                        end_col,
+                        "Log exception with logging.exception",
                     ));
+                    findings.push(finding);
                 }
             }
         }
@@ -206,22 +239,30 @@ impl Rule for Tb101SilentCatch {
                     let (start_col, _) = ParsedSource::point_to_1indexed(node.start_position());
                     let (_, end_col) = ParsedSource::point_to_1indexed(node.end_position());
 
-                    findings.push(Finding::new(
-                            self.id(),
-                            self.name(),
-                            self.default_severity(),
-                            Confidence::High,
-                            &ctx.file_diff.path,
-                            start_line,
-                            end_line,
-                            start_col,
-                            end_col,
-                            "Empty if err != nil block swallows errors silently without handling or returning."
-                                .to_string(),
-                            Some("Handle the error, log it, or return err.".to_string()),
-                            node.kind(),
-                            text,
-                        ));
+                    let finding = Finding::new(
+                        self.id(),
+                        self.name(),
+                        self.default_severity(),
+                        Confidence::High,
+                        &ctx.file_diff.path,
+                        start_line,
+                        end_line,
+                        start_col,
+                        end_col,
+                        "Empty if err != nil block swallows errors silently without handling or returning."
+                            .to_string(),
+                        Some("Handle the error, log it, or return err.".to_string()),
+                        node.kind(),
+                        text,
+                    ).with_auto_fix(crate::model::AutoFix::new(
+                        "if err != nil {\n\treturn fmt.Errorf(\"operation failed: %w\", err)\n}",
+                        start_line,
+                        end_line,
+                        start_col,
+                        end_col,
+                        "Return wrapped error with fmt.Errorf",
+                    ));
+                    findings.push(finding);
                 }
             }
         }
@@ -273,6 +314,7 @@ mod tests {
 
         assert_eq!(findings.len(), 1);
         assert_eq!(findings[0].rule_id, "TB101");
+        assert!(findings[0].auto_fix.is_some());
     }
 
     #[test]

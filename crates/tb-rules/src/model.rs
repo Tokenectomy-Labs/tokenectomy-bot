@@ -42,6 +42,36 @@ impl fmt::Display for Confidence {
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct AutoFix {
+    pub replacement: String,
+    pub start_line: usize,
+    pub end_line: usize,
+    pub start_col: usize,
+    pub end_col: usize,
+    pub description: String,
+}
+
+impl AutoFix {
+    pub fn new(
+        replacement: impl Into<String>,
+        start_line: usize,
+        end_line: usize,
+        start_col: usize,
+        end_col: usize,
+        description: impl Into<String>,
+    ) -> Self {
+        Self {
+            replacement: replacement.into(),
+            start_line,
+            end_line,
+            start_col,
+            end_col,
+            description: description.into(),
+        }
+    }
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct Finding {
     pub rule_id: String,
     pub rule_name: String,
@@ -55,6 +85,7 @@ pub struct Finding {
     pub message: String,
     pub fix_hint: Option<String>,
     pub fingerprint: String,
+    pub auto_fix: Option<AutoFix>,
 }
 
 impl Finding {
@@ -93,7 +124,13 @@ impl Finding {
             message,
             fix_hint,
             fingerprint,
+            auto_fix: None,
         }
+    }
+
+    pub fn with_auto_fix(mut self, auto_fix: AutoFix) -> Self {
+        self.auto_fix = Some(auto_fix);
+        self
     }
 }
 

@@ -117,6 +117,13 @@ impl ParsedSource {
         (start, end)
     }
 
+    /// 1-indexed (start_col, end_col)
+    pub fn node_col_range(node: &Node) -> (usize, usize) {
+        let start = node.start_position().column + 1;
+        let end = node.end_position().column + 1;
+        (start, end)
+    }
+
     /// Checks whether node's line range overlaps with any changed range in the diff.
     /// Range overlap condition: max(start_a, start_b) <= min(end_a, end_b)
     pub fn node_overlaps_ranges(node: &Node, ranges: &[(usize, usize)]) -> bool {

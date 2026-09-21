@@ -89,6 +89,14 @@ impl StickySummaryReporter {
             ));
         }
 
+        let autofixable_count = findings.iter().filter(|f| f.auto_fix.is_some()).count();
+        if autofixable_count > 0 {
+            out.push_str(&format!(
+                "> 🛠️ **Auto-Fix Tersedia**: {} dari {} temuan dapat diperbaiki secara otomatis dengan menjalankan `tokenectomy-bot review --fix`.\n\n",
+                autofixable_count, findings.len()
+            ));
+        }
+
         out.push_str("\n<details>\n<summary>🔎 <b>Rincian Perbaikan & Fix Hints</b></summary>\n\n");
 
         for f in findings {
@@ -102,6 +110,9 @@ impl StickySummaryReporter {
             out.push_str(&format!("* **Masalah**: {}\n", f.message));
             if let Some(ref hint) = f.fix_hint {
                 out.push_str(&format!("* **Saran Perbaikan**: {}\n", hint));
+            }
+            if let Some(ref fix) = f.auto_fix {
+                out.push_str(&format!("* **Auto-Fix**: ✅ `{}`\n", fix.description));
             }
             out.push_str(&format!("* **Fingerprint**: `{}`\n\n", f.fingerprint));
         }

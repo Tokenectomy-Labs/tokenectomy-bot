@@ -64,6 +64,10 @@ impl ReviewBatchGenerator {
                     body.push_str(&format!("\n> 💡 **Saran**: {}\n", hint));
                 }
 
+                if let Some(ref fix) = f.auto_fix {
+                    body.push_str(&format!("\n```suggestion\n{}\n```\n", fix.replacement));
+                }
+
                 comments.push(ReviewComment {
                     path: file_key,
                     line: f.start_line,

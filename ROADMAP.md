@@ -140,7 +140,11 @@ Mendeteksi trik agent yang membuat CI hijau tanpa memperbaiki perilaku. Ini mela
   - Komentar hanya pada baris yang ada di diff (sisi kanan), karena selain itu API mengembalikan 422; temuan di luar diff masuk ke ringkasan.
   - Kirim sebagai **satu review batch**, bukan komentar satu per satu, agar tidak membanjiri notifikasi.
   - Dedupe lewat penanda tersembunyi berisi fingerprint; komentar yang sudah usang setelah push baru ditandai selesai atau diminimalkan.
-  - Blok `suggestion` GitHub untuk perbaikan yang aman dan mekanis.
+  - Blok `suggestion` GitHub otomatis dihasilkan dari model `AutoFix` sehingga reviewer/author dapat menerapkan perbaikan 1-klik di PR.
+- [x] **Auto-Fix AST Engine & Action Delivery**
+  - CLI flag `--fix` (`tokenectomy-bot review --fix`): merewrite berkas fisik di disk secara deterministik berbasis span AST tanpa drift nomor baris.
+  - Input `auto_fix: true` di `action.yml`: otomatis melakukan commit dan push perbaikan ke branch PR oleh bot.
+  - Full repo self-dogfooding di `.github/workflows/ci.yml` dan `.github/workflows/tmy_joy_gate.yml`.
 - [x] **PR Summary Sticky Comment**
   - Satu komentar yang **di-update di tempat** setiap push (penanda tersembunyi), tidak menumpuk komentar baru.
   - Ketika temuan sudah nol, komentar berubah menjadi status bersih, bukan dibiarkan usang.

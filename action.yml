@@ -52,6 +52,10 @@ inputs:
     description: 'GitHub Token for posting PR comments and reviews'
     required: false
     default: ${{ github.token }}
+  auto_fix:
+    description: 'Automatically apply safe deterministic AST fixes and commit them to the PR branch'
+    required: false
+    default: 'false'
 
 outputs:
   exit_code:
@@ -99,10 +103,23 @@ runs:
           ARGS+=(--output "${{ inputs.output_file }}")
         fi
 
+        if [ "${{ inputs.auto_fix }}" = "true" ]; then
+          ARGS+=(--fix)
+        fi
+
         set +e
         cargo run --manifest-path "${{ github.action_path }}/Cargo.toml" --quiet -p tb-cli -- review "${ARGS[@]}"
         EC=$?
         set -e
+
+        # If auto_fix is active and files were changed on disk, commit and push them
+        if [ "${{ inputs.auto_fix }}" = "true" ] && ! git diff --quiet; then
+          echo "[tokenectomy-bot] Auto-fixes applied to code. Committing..."
+          git config user.name "tokenectomy-bot[bot]"
+          git config user.email "bot@tokenectomy.com"
+          git commit -am "chore(bot): apply deterministic quality gate auto-fixes" || true
+          git push origin HEAD || echo "[tokenectomy-bot] Notice: Could not push auto-fix commit (branch protected or read-only token)"
+        fi
 
         # Automatically post or update sticky PR comment in Pull Request discussion
         PR_NUM="${{ github.event.pull_request.number }}"

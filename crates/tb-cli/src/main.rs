@@ -245,6 +245,10 @@ pub struct ReviewArgs {
     /// Automatically append sticky summary to $GITHUB_STEP_SUMMARY
     #[arg(long, default_value_t = true, action = clap::ArgAction::Set, num_args(0..=1), default_missing_value = "true")]
     step_summary: bool,
+
+    /// Automatically apply safe deterministic AST fixes to files on disk
+    #[arg(long)]
+    fix: bool,
 }
 
 #[derive(Args, Debug)]
@@ -638,6 +642,54 @@ fn run_review(args: ReviewArgs) -> Result<i32> {
             .with_context(|| format!("Failed to write report to {:?}", out_path))?;
     } else {
         println!("{}", output_str);
+    }
+
+    // If --fix requested, apply auto-fixes to files on disk
+    if args.fix {
+        let mut fixes_by_file: HashMap<PathBuf, Vec<tb_rules::AutoFix>> = HashMap::new();
+        for f in &findings {
+            if let Some(ref fix) = f.auto_fix {
+                fixes_by_file
+                    .entry(f.file.clone())
+                    .or_default()
+                    .push(fix.clone());
+            }
+        }
+
+        let mut total_applied = 0;
+        let mut files_modified = 0;
+
+        for (rel_path, fixes) in fixes_by_file {
+            let full_path = repo_dir.join(&rel_path);
+            if let Ok(source) = fs::read_to_string(&full_path) {
+                let res = tb_rules::CodeFixer::apply(&source, &fixes);
+                if res.applied_count > 0 {
+                    if let Err(e) = fs::write(&full_path, &res.fixed) {
+                        eprintln!(
+                            "[tokenectomy-bot] Failed to write fixed file {:?}: {}",
+                            full_path, e
+                        );
+                    } else {
+                        println!(
+                            "✔ [auto-fix] Applied {} fix(es) to {}",
+                            res.applied_count,
+                            rel_path.display()
+                        );
+                        total_applied += res.applied_count;
+                        files_modified += 1;
+                    }
+                }
+            }
+        }
+
+        if total_applied > 0 {
+            println!(
+                "🛠️ [auto-fix] Summary: Successfully applied {} fix(es) across {} file(s).",
+                total_applied, files_modified
+            );
+        } else {
+            println!("ℹ️ [auto-fix] No auto-fixable findings found or fixes already applied.");
+        }
     }
 
     let exit_code = GatePolicy::evaluate_exit_code(&findings, effective_fail_on);
